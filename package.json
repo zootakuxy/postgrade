@@ -1,0 +1,14 @@
+{
+  "name": "postgrade",
+  "version": "1.0.0",
+  "description": "Imagem de PostgresSQL putencializado com http e outras extensões fundamentais",
+  "main": "index.js",
+  "scripts": {
+    "build:image": "docker build -t zootakuxy/postgrade:$(cat ./TAG) -t zootakuxy/postgrade:latest .",
+    "build:publish": "docker push zootakuxy/postgrade:$(cat ./TAG) & docker push zootakuxy/postgrade:latest",
+    "build:publish-tag": "docker push zootakuxy/postgrade:$(cat ./TAG)",
+    "build:publish-latest": "docker push zootakuxy/postgrade:latest"
+  },
+  "author": "",
+  "license": "ISC"
+}
