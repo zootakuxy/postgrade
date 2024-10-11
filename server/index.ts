@@ -1,3 +1,4 @@
+require( "source-map-support" ).install();
 import fs from "fs";
 import Path from "path";
 

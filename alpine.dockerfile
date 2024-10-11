@@ -1,0 +1,4 @@
+FROM alpine:latest
+ARG VERSION=33
+ENV NVER=44
+CMD echo $MY_VAR

@@ -10,7 +10,7 @@ export class EnvOptions {
     CONFIGS:  string = "/etc/postgrade/main.conf"
     SETUP: string = "/postgrade/setups"
 
-    POSTGRES_CLUSTER: string  = "/var/lib/postgres"
+    POSTGRES_CLUSTER: string  = "/var/lib/postgresql/data"
     POSTGRES_NAME: string = "postgres"
     POSTGRES_SUPERUSER: string = "postgres"
     POSTGRES_PASSWORD:  string
@@ -113,9 +113,6 @@ const _as = {
                 direction: file
             })
         }
-
-
-
     },
     integer( s: string ){
         let num = this.number( s );
@@ -143,7 +140,7 @@ const extract = ( key:string, props:string[], configsFile:any, source:any, origi
         : origin === "default"? key
         : undefined;
     let value = source[ use ];
-    let parser:Parser= definition[ key ]();
+    let parser:Parser= definition[ key ];
     if( typeof parser === "function" ) {
         value = parser( value, origin, configsFile );
     }

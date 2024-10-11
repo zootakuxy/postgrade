@@ -1,14 +1,25 @@
 # Usar a imagem base do PostgreSQL 17.0 em Alpine
-FROM postgres:17.0-alpine3.19
-EXPOSE 5432 27017
+
+
+ARG PG_VERSION=17
+ARG VARIATION=alpine3.19
+FROM postgres:${PG_VERSION}-${VARIATION}
+LABEL name="postgrade" \
+    version="1.0" \
+    description="Imagem de PostgresSQL putencializado com http"
+
+EXPOSE 5432 27017 3000
 WORKDIR /app
-LABEL name="postgrade" version="1.0" description="Imagem de PostgresSQL putencializado com http"
 
+ARG SETUP=/postgrade/setups
+ARG CLUSTER=/var/lib/postgresql/data
 
-#RUN echo 'http://dl-cdn.alpinelinux.org/alpine/v3.6/main' >> /etc/apk/repositories
-#RUN echo 'http://dl-cdn.alpinelinux.org/alpine/v3.6/community' >> /etc/apk/repositories
-#RUN apk add --no-cache \
-#    mongodb mongodb-tools
+ENV POSTGRADE_POSTGRES_CLUSTER ${CLUSTER}
+ENV POSTGRADE_SETUP ${SETUP}
+ENV POSTGRADE_POSTGRES_VERSION=$PG_VERSION
+
+VOLUME ${POSTGRADE_POSTGRES_CLUSTER}
+VOLUME ${POSTGRADE_SETUP}
 
 # Instalar dependências necessárias para a compilação
 RUN apk add --no-cache \
@@ -29,20 +40,24 @@ RUN cd /pgsql-http && \
     make install && \
     rm -rf /pgsql-http
 
-run su postgres -c "initdb -D /var/lib/postgresql/data --auth-host=md5"
+run su postgres -c "initdb -D ${POSTGRADE_POSTGRES_CLUSTER} --auth-host=md5"
 
-COPY bin .
-RUN chmod +x ./bin/postgrade.sh
-RUN chmod +x ./bin/setup.sh
-
-RUN ./bin/setup.sh
-
-RUN npm install typescript -g
+# Copy mandatories files
+RUN mkdir bin
+COPY bin/postgrade.sh bin
+COPY bin/setup.sh bin
 COPY package.json .
 
+# Grant mandated permissions
+RUN chmod +x bin/postgrade.sh
+RUN chmod +x bin/setup.sh
+
+# Build setups
+RUN ./bin/setup.sh
+RUN npm install typescript -g
 RUN npm install --production
 
+# Copy another files
 COPY . .
 RUN tsc | echo "ok"
-
 CMD ["./bin/postgrade.sh"]
