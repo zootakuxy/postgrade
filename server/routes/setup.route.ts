@@ -5,7 +5,6 @@ import {app} from "../services/web";
 import {PostgradeConfigs} from "../../libs/postgrade/PostgradeConfigs";
 import {InstallationLocation, PostgresContext, PostgresInstanceOptions, sql} from "kitres";
 import {execSync} from "node:child_process";
-import ini from "ini";
 import dao from "../services/database/index";
 
 const psql = execSync("which psql").toString().trim();
@@ -128,8 +127,6 @@ app.get( "/api/admin/setup/:setup", ( req, res ) => {
         handler();
     });
 })
-
-
 
 
 function hba( opts:PostgradeConfigs ){

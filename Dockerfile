@@ -8,18 +8,20 @@ LABEL name="postgrade" \
     version="1.0" \
     description="Imagem de PostgresSQL putencializado com http"
 
-EXPOSE 5432 27017 3000
+EXPOSE 5432 3000
 WORKDIR /app
 
 ARG SETUP="/postgrade/setups"
 ARG CLUSTER="/var/lib/postgresql/data"
+ARG SUPERUSER="postgres"
 
 ENV POSTGRADE_POSTGRES_CLUSTER="${CLUSTER}"
 ENV POSTGRADE_SETUP="${SETUP}"
-ENV POSTGRADE_POSTGRES_VERSION="$PG_VERSION"
+ENV POSTGRADE_POSTGRES_VERSION="${PG_VERSION}"
+ENV POSTGRADE_POSTGRES_SUPERUSER="${SUPERUSER}"
 
 VOLUME ${POSTGRADE_POSTGRES_CLUSTER}
-#VOLUME ${POSTGRADE_SETUP}
+VOLUME ${POSTGRADE_SETUP}
 
 # Instalar dependências necessárias para a compilação
 RUN apk add --no-cache \

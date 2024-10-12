@@ -1,17 +1,16 @@
 set -e
 
-# Arquivo de controle
-SETUP_DONE="/postgrade/superuser/setup_done"
+# Diretório de dados do PostgreSQL
+DATA_DIR="${POSTGRADE_POSTGRES_CLUSTER}"
 
-# Verifica se o setup já foi executado
-if [ ! -f "$SETUP_DONE" ]; then
+# Verifica se a pasta de dados está vazia
+if [ "$(ls -A "$DATA_DIR")" ]; then
+    echo "A pasta de dados não está vazia. Pulando o setup."
+else
     echo "Executando o setup pela primeira vez..."
     ./bin/setup.sh
-    touch "$SETUP_DONE"  # Cria o arquivo de controle
-else
-    echo "Setup já foi realizado anteriormente. Pulando."
 fi
 
 echo "POSTGRADE_POSTGRES_PASSWORD: $POSTGRADE_POSTGRES_PASSWORD"
-su postgres -c "pg_ctl -D /var/lib/postgresql/data  start"
+su postgres -c "pg_ctl -D \"${DATA_DIR}\"  start"
 node server/index.js
