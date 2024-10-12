@@ -1,14 +1,17 @@
+import {execSync, spawn} from "node:child_process";
+
 require( "source-map-support" ).install();
 import fs from "fs";
 import Path from "path";
 
 import {ArgsOptions, environments} from "../env";
 import {context} from "./context/index";
+import os from "os";
 
 
 export function startServer( opts?:ArgsOptions ){
-
     let load = environments( opts );
+
     if( load.failures.length ) {
         load.failures.forEach( value => {
             console.error( context.tag, `Load environment failed`, value.message );

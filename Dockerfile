@@ -1,9 +1,9 @@
-# Usar a imagem base do PostgreSQL 17.0 em Alpine
+ARG PG_VERSION="17"
+ARG VARIATION="alpine3.19"
 
 
-ARG PG_VERSION=17
-ARG VARIATION=alpine3.19
 FROM postgres:${PG_VERSION}-${VARIATION}
+
 LABEL name="postgrade" \
     version="1.0" \
     description="Imagem de PostgresSQL putencializado com http"
@@ -11,15 +11,15 @@ LABEL name="postgrade" \
 EXPOSE 5432 27017 3000
 WORKDIR /app
 
-ARG SETUP=/postgrade/setups
-ARG CLUSTER=/var/lib/postgresql/data
+ARG SETUP="/postgrade/setups"
+ARG CLUSTER="/var/lib/postgresql/data"
 
-ENV POSTGRADE_POSTGRES_CLUSTER ${CLUSTER}
-ENV POSTGRADE_SETUP ${SETUP}
-ENV POSTGRADE_POSTGRES_VERSION=$PG_VERSION
+ENV POSTGRADE_POSTGRES_CLUSTER="${CLUSTER}"
+ENV POSTGRADE_SETUP="${SETUP}"
+ENV POSTGRADE_POSTGRES_VERSION="$PG_VERSION"
 
 VOLUME ${POSTGRADE_POSTGRES_CLUSTER}
-VOLUME ${POSTGRADE_SETUP}
+#VOLUME ${POSTGRADE_SETUP}
 
 # Instalar dependências necessárias para a compilação
 RUN apk add --no-cache \
@@ -40,24 +40,25 @@ RUN cd /pgsql-http && \
     make install && \
     rm -rf /pgsql-http
 
-run su postgres -c "initdb -D ${POSTGRADE_POSTGRES_CLUSTER} --auth-host=md5"
+RUN npm install typescript -g
 
 # Copy mandatories files
 RUN mkdir bin
-COPY bin/postgrade.sh bin
-COPY bin/setup.sh bin
 COPY package.json .
 
-# Grant mandated permissions
-RUN chmod +x bin/postgrade.sh
-RUN chmod +x bin/setup.sh
 
-# Build setups
-RUN ./bin/setup.sh
-RUN npm install typescript -g
-RUN npm install --production
+RUN npm install --omit=dev
 
 # Copy another files
 COPY . .
+
+# Grant mandated permissions
+RUN chmod +x bin/start.sh
+RUN chmod +x bin/setup.sh
+RUN chmod +x bin/stop.sh
+
 RUN tsc | echo "ok"
-CMD ["./bin/postgrade.sh"]
+
+
+#ENTRYPOINT ["./bin/start.sh"]
+CMD ["./bin/start.sh"]

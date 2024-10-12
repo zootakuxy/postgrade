@@ -3,18 +3,23 @@ import Path from "path";
 import fs from "fs";
 import {app} from "../services/web";
 import {PostgradeConfigs} from "../../libs/postgrade/PostgradeConfigs";
-import {InstallationLocation, PostgresContext, PostgresInstanceOptions} from "kitres";
+import {InstallationLocation, PostgresContext, PostgresInstanceOptions, sql} from "kitres";
+import {execSync} from "node:child_process";
+import ini from "ini";
+import dao from "../services/database/index";
 
-app.post("/api/admin/setup/:setup", (req, res) => {
+const psql = execSync("which psql").toString().trim();
 
-})
-app.post( "/api/admin/setup/:setup", ( req, res ) => {
-    let configsFile = Path.join( context.env.SETUP, req.params.setup, "configs.json" );
+app.get( "/api/admin/setup/:setup", ( req, res ) => {
+    console.log( JSON.stringify( context.env, null, 2 ))
+    let configsFile = Path.join( context.env.SETUP, req.params.setup, "setup.json" );
     if( !fs.existsSync( configsFile ) ){
         res.json({
             result: false,
-            message: `Setup configs not exists!`
+            message: `Setup configs not exists!`,
+            configsFile
         });
+        return;
     }
 
     let configs:PostgradeConfigs;
@@ -22,7 +27,6 @@ app.post( "/api/admin/setup/:setup", ( req, res ) => {
         res.json({
             result: false,
             message: "Invalid setup configs file"
-
         })
         return;
     }
@@ -63,6 +67,9 @@ app.post( "/api/admin/setup/:setup", ( req, res ) => {
         service: context.env.POSTGRES_SERVICE,
         serverHost: context.env.POSTGRES_HOST,
         cluster: context.env.POSTGRES_CLUSTER,
+        cli: {
+            psql: psql
+        }
     };
 
     let setup = new PostgresContext( setupOption )
@@ -74,7 +81,7 @@ app.post( "/api/admin/setup/:setup", ( req, res ) => {
         console.log( `database setup message > ${ message.trim() }` );
     });
 
-    setup.on(  "setup",(error, result) => {
+    setup.on( "setup",(error, result) => {
         if( error ) return console.log( `Database preparation Error | ${ error.message }` );
         else if( !result.status) return console.log( "Database preparation failed!" )
         else return  console.log( `${ context.tag } database setup > Database prepared successfully!` )
@@ -91,23 +98,121 @@ app.post( "/api/admin/setup/:setup", ( req, res ) => {
         console.log( `${ context.tag } database setup flow skipped> Skipped database preparation flow ${ flow.identifier } in steep ${ steep }`)
     });
 
-    setup.setup( ( error, result) => {
-        if( error ) {
-            console.error( context.tag, `Error ao efetuar o setup da base de dados!` );
-            return res.status( 400 )
-                .json( {
+    let handler = ()=>{
+        setup.setup( ( error, result) => {
+            if( error ) {
+                console.error( context.tag, `Error ao efetuar o setup da base de dados!` );
+                return res.json( {
                     result: false,
                     message: `Error ao efetuar o setup da base de dados`,
                     hint: error.message,
                     setups: result
                 })
-        }
-        return res.status( 400 )
-            .json({
-                result: false,
+            }
+            return res.json({
+                result: result?.status,
                 message: `Error ao efetuar o setup da base de dados`,
-                hint: error.message,
                 setups: result
             })
+        });
+    }
+
+    hba( configs );
+    dao.core.query( sql`
+      select * from pg_reload_conf()
+    `, (error, result) => {
+        if( error ) return res.json({
+            result: false,
+            message: "Reload configs failed!",
+        });
+        handler();
     });
 })
+
+
+
+
+function hba( opts:PostgradeConfigs ){
+
+    let content = fs.readFileSync( Path.join( context.env.POSTGRES_CLUSTER, "postgresql.conf" ) ).toString();
+    let configLines:string[] = [];
+    // let configs = ini.parse( content );
+
+    // if( !configs["port"]
+    //     || Number(configs[ "port" ]) !== context.env.POSTGRES_PORT
+    // ) configLines.push( `port = ${ context.env.POSTGRES_PORT }` );
+    //
+    // if( opts.configs.listenAddress && (
+    //     !configs["listen_addresses"]
+    //     || configs[ "listen_addresses" ] !== `'${ opts.configs.listenAddress }'`
+    // )) configLines.push( `listen_addresses = '${ opts.configs.listenAddress }'` );
+
+    let update = ( filename:string )=>{
+        if( configLines.length ){
+            let scripts  = `
+                ${ content }
+                #=================== ${ new Date().toISOString() } ==================
+                ${ configLines.join("\n")}
+                #===================                               ==================
+                `.split( "\n" )
+                .map( value => value.trim() )
+                .filter( value => value.length )
+                .join( "\n" )
+            ;
+            fs.writeFileSync( Path.join( context.env.POSTGRES_CLUSTER, filename ), scripts, );
+        }
+    }
+
+    update( "postgresql.conf" );
+    configLines.length = 0;
+
+    content = fs.readFileSync( Path.join( context.env.POSTGRES_CLUSTER, "pg_hba.conf" ) ).toString();
+    let hba = content.split("\n")
+        .filter( value => !value.trim().startsWith( "#" ) )
+        .map( value => {
+            let parts = value.split( " " )
+                .map( value1 => value1.trim() )
+                .filter( value1 => value1.length );
+            if(!["local", "host"].includes( parts[0]) )  return null;
+            if( parts[0] === "local" && parts.length !== 4) return null;
+            if( parts[0] === "host" && parts.length !== 5) return null;
+            let TYPE:string, DATABASE:string, USER:string, ADDRESS:string, METHOD:string;
+
+            if( parts[0] === "local" ){
+                [ TYPE, DATABASE, USER, METHOD ] =parts;
+            } else if( parts[0] === "host"){
+                [ TYPE, DATABASE, USER, ADDRESS, METHOD ] =parts;
+            }
+
+            if( !TYPE ) return null;
+            if( !DATABASE) return null;
+            if( !USER) return  null;
+            if( !METHOD) return null;
+
+            return  {
+                TYPE, DATABASE, USER, ADDRESS, METHOD
+            }
+        }).filter( value => {
+            return !!value;
+        });
+
+    opts.hba.forEach( value => {
+        if ( value.address === "*" ) value.address = "0.0.0.0/0";
+    });
+
+    opts.hba.filter( news => {
+        if( news.address === "*" ) news.address = "0.0.0.0/0";
+        let find = hba.find( current => {
+            return current.TYPE === news.type
+                && current.DATABASE === news.database
+                && current.USER === news.user
+                && current.METHOD === news.method
+                && (current.ADDRESS === news.address || (!current.ADDRESS && !news.address))
+        });
+        return !find;
+    }).forEach( value => {
+        //# TYPE  DATABASE        USER            ADDRESS                 METHOD
+        configLines.push( `${value.type }    ${ value.database }    ${ value.user }    ${ value.address?value.address:"" }    ${ value.method }` );
+    });
+    update( "pg_hba.conf" );
+}

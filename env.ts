@@ -7,15 +7,15 @@ export type EnvMode = "dev" | "test" | "prop" | "public";
 export class EnvOptions {
     NAME: string =  "POSTGRADE"
     MODE: EnvMode = "dev"
-    CONFIGS:  string = "/etc/postgrade/main.conf"
+    CONFIGS: string = "/etc/postgrade/main.conf"
     SETUP: string = "/postgrade/setups"
 
     POSTGRES_CLUSTER: string  = "/var/lib/postgresql/data"
     POSTGRES_NAME: string = "postgres"
     POSTGRES_SUPERUSER: string = "postgres"
-    POSTGRES_PASSWORD:  string
-    POSTGRES_HOST:  "127.0.0.1"
-    POSTGRES_VERSION:  14
+    POSTGRES_PASSWORD: string = null
+    POSTGRES_HOST: string = "127.0.0.1"
+    POSTGRES_VERSION:  number = 14
     POSTGRES_PORT: number = 5432
     POSTGRES_SERVICE: "postgresql.service"
 
@@ -23,10 +23,10 @@ export class EnvOptions {
     SERVER_PROTOCOL: "http"|"https" = "http"
 
     MAIL_PASSWORD: string
-    MAIL_HOSTNAME: string
-    MAIL_NAME: string
-    MAIL_MAIL: string
-    MAIL_PORT: number
+    MAIL_HOSTNAME: string = null
+    MAIL_NAME: string = null
+    MAIL_MAIL: string = null
+    MAIL_PORT: number = null
 }
 
 const definition:{[ K in keyof EnvOptions ]?:Parser } = {
@@ -89,13 +89,13 @@ const _as = {
         if( typeof s !== "string" ) return Password.instance();
 
         let parts = s.split(":");
-        if( parts.length < 2 ) return Password.instance({ resolved: s });
+        if( parts.length < 2 ) return Password.instance({ resolved: s, type: "raw" });
 
         let type = parts.shift() as Password["type"];
         let direction = parts.join( ":" );
         if( [ "plain", "raw" ].includes( type ) ) return Password.instance({
             type: type,
-            resolved: s,
+            resolved: direction,
             direction: "plain"
         });
 
@@ -133,24 +133,37 @@ const extractor = {
 
 const defaults = new EnvOptions()
 
+type Failure = ({
+    ENV:keyof EnvOptions,
+    message:string
+});
 const extract = ( key:string, props:string[], configsFile:any, source:any, origin:Origin,  )=>{
     let use = origin === "options"? props.map( value1 => value1.toLowerCase() ).join( "." )
         : origin === "env"? [ "POSTGRADE", ...props ].join( "_" )
         : origin === "configs"? key
         : origin === "default"? key
         : undefined;
-    let value = source[ use ];
+    let extracted = source[ use ];
+    let value = extracted;
     let parser:Parser= definition[ key ];
     if( typeof parser === "function" ) {
-        value = parser( value, origin, configsFile );
+        value = parser( extracted, origin, configsFile );
     }
+    if ( key === "POSTGRES_PASSWORD" ){
+        console.log({key, origin, use, extracted, value, source })
+    }
+
     return value;
 }
+
+function hasValue( key:string, val: any) {
+    if( val === null || val === undefined ) return false;
+    return !( val instanceof Password && !val.resolved );
+
+}
+
 export function environments( options?:Partial<ArgsOptions> ){
-    let failures:({
-        ENV:keyof EnvOptions,
-        message:string
-    })[] = [];
+    let failures:Failure[] = [];
     options = options || {};
     let configsFile = options["configs"] as string
         || process.env[ "POSTGRADE_CONFIGS" ]
@@ -166,18 +179,17 @@ export function environments( options?:Partial<ArgsOptions> ){
 
     Object.entries( defaults ).forEach( ( [ key, value ] ) => {
         let props = key.split( "_" );
-        use[ key ]  =  extract( key, props, configsFile,  options, "options" )
-                    || extract( key, props, configsFile, process.env, "env" )
-                    || extract( key, props, configsFile, configs, "configs" )
-                    || extract( key, props, configsFile, defaults, "default" )
-        ;
+        let val =                         extract( key, props, configsFile,  options, "options" );
+        if( !hasValue( key, val ) ) val = extract( key, props, configsFile, process.env, "env" );
+        if( !hasValue( key, val ) ) val = extract( key, props, configsFile, configs, "configs" );
+        if( !hasValue( key, val ) ) val = extract( key, props, configsFile, defaults, "default" );
+        use[ key ] = val;
 
-        if( use[ key ] instanceof Password) {
-            let pass = use [key];
-            use[ key ] = pass.resolved;
-            if( !pass.resolved || pass.type === "unresolved" ) failures.push({
+        if( val instanceof Password) {
+            use[ key ] = val.resolved;
+            if( !val.resolved || val.type === "unresolved" ) failures.push({
                 ENV: key as any,
-                message: `Unresolved env props:${key} with direction: ${ pass.direction }`
+                message: `Unresolved env props:${key} with direction: ${ val.direction }`
             })
         }
     });
