@@ -131,25 +131,12 @@ app.get( "/api/admin/setup/:setup", ( req, res ) => {
 
 function hba( opts:PostgradeConfigs ){
 
-    let content = fs.readFileSync( Path.join( context.env.POSTGRES_CLUSTER, "postgresql.conf" ) ).toString();
-    let configLines:string[] = [];
-    // let configs = ini.parse( content );
-
-    // if( !configs["port"]
-    //     || Number(configs[ "port" ]) !== context.env.POSTGRES_PORT
-    // ) configLines.push( `port = ${ context.env.POSTGRES_PORT }` );
-    //
-    // if( opts.configs.listenAddress && (
-    //     !configs["listen_addresses"]
-    //     || configs[ "listen_addresses" ] !== `'${ opts.configs.listenAddress }'`
-    // )) configLines.push( `listen_addresses = '${ opts.configs.listenAddress }'` );
-
-    let update = ( filename:string )=>{
-        if( configLines.length ){
+    let update = ( filename:string, raw:string, lines:string[])=>{
+        if( lines.length ){
             let scripts  = `
-                ${ content }
+                ${ raw }
                 #=================== ${ new Date().toISOString() } ==================
-                ${ configLines.join("\n")}
+                ${ lines.join("\n")}
                 #===================                               ==================
                 `.split( "\n" )
                 .map( value => value.trim() )
@@ -160,14 +147,12 @@ function hba( opts:PostgradeConfigs ){
         }
     }
 
-    update( "postgresql.conf" );
-    configLines.length = 0;
-
-    content = fs.readFileSync( Path.join( context.env.POSTGRES_CLUSTER, "pg_hba.conf" ) ).toString();
-    let hba = content.split("\n")
-        .filter( value => !value.trim().startsWith( "#" ) )
-        .map( value => {
-            let parts = value.split( " " )
+    let lines:string[] = [];
+    let raw = fs.readFileSync( Path.join( context.env.POSTGRES_CLUSTER, "pg_hba.conf" ) ).toString();
+    let hba = raw.split( "\n" )
+        .map( (line, index ) => {
+            if( !line.trim().startsWith( "#" ) ) return null;
+            let parts = line.split( " " )
                 .map( value1 => value1.trim() )
                 .filter( value1 => value1.length );
             if(!["local", "host"].includes( parts[0]) )  return null;
@@ -186,8 +171,8 @@ function hba( opts:PostgradeConfigs ){
             if( !USER) return  null;
             if( !METHOD) return null;
 
-            return  {
-                TYPE, DATABASE, USER, ADDRESS, METHOD
+            return {
+                TYPE, DATABASE, USER, ADDRESS, METHOD, index
             }
         }).filter( value => {
             return !!value;
@@ -209,7 +194,8 @@ function hba( opts:PostgradeConfigs ){
         return !find;
     }).forEach( value => {
         //# TYPE  DATABASE        USER            ADDRESS                 METHOD
-        configLines.push( `${value.type }    ${ value.database }    ${ value.user }    ${ value.address?value.address:"" }    ${ value.method }` );
+        lines.push( `${value.type }    ${ value.database }    ${ value.user }    ${ value.address?value.address:"" }    ${ value.method }` );
     });
-    update( "pg_hba.conf" );
+
+    update( "pg_hba.conf", raw, lines );
 }
