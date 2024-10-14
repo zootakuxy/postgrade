@@ -23,15 +23,29 @@ ENV POSTGRADE_POSTGRES_SUPERUSER="${SUPERUSER}"
 VOLUME ${POSTGRADE_POSTGRES_CLUSTER}
 VOLUME ${POSTGRADE_SETUP}
 
+# Mongodb Instalation
+# https://www.baeldung.com/linux/mongodb-alpine-installation
+
+# pg-http Instalation
+# https://github.com/pramsey/pgsql-http
+
+RUN echo 'http://dl-cdn.alpinelinux.org/alpine/v3.9/main' >> /etc/apk/repositories
+RUN echo 'http://dl-cdn.alpinelinux.org/alpine/v3.9/community' >> /etc/apk/repositories
+RUN apk update
+
 # Instalar dependências necessárias para a compilação
 RUN apk add --no-cache \
     build-base \
     git \
     curl-dev \
+    curl \
     postgresql-dev \
     musl-dev \
     openrc \
-    nodejs npm
+    nodejs npm \
+    mongodb mongodb-tools
+
+RUN rc-update add mongodb default
 
 # Clonar o repositório da extensão pgsql-http
 RUN git clone --branch master https://github.com/pramsey/pgsql-http.git /pgsql-http
@@ -60,7 +74,6 @@ RUN chmod +x bin/setup.sh
 RUN chmod +x bin/stop.sh
 
 RUN tsc | echo "ok"
-
 
 #ENTRYPOINT ["./bin/start.sh"]
 CMD ["./bin/start.sh"]
