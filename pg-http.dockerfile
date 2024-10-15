@@ -18,7 +18,7 @@ RUN apk add --no-cache \
     curl-dev \
     postgresql-dev \
     musl-dev \
-    openrc \
+    openrc
 
 # Clonar o repositório da extensão pgsql-http
 RUN git clone --branch master https://github.com/pramsey/pgsql-http.git /pgsql-http
