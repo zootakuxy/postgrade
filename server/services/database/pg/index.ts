@@ -1,6 +1,6 @@
 import { PgCore } from "kitres";
 import {Pool} from "pg";
-import {context} from "../../context/index";
+import {context} from "../../../context/index";
 
 namespace dao {
     let pool = new Pool({

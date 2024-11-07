@@ -20,6 +20,7 @@ export class EnvOptions {
     POSTGRES_SERVICE: "postgresql.service"
 
     SERVER_PORT: number = 3000
+    SERVER_INTERNAL: number = 4444
     SERVER_PROTOCOL: "http"|"https" = "http"
 
     MAIL_PASSWORD: string

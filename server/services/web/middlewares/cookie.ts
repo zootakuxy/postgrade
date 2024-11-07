@@ -1,5 +1,5 @@
 
 import cookieParser from "cookie-parser";
-import {app} from "../server";
+import {api} from "../server";
 
-app.use( cookieParser() );
+api.use( cookieParser() );

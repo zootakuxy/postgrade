@@ -11,6 +11,5 @@ else
     ./bin/setup.sh
 fi
 
-echo "POSTGRADE_POSTGRES_PASSWORD: $POSTGRADE_POSTGRES_PASSWORD"
 su postgres -c "pg_ctl -D \"${DATA_DIR}\"  start"
 node server/index.js

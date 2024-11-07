@@ -1,15 +1,15 @@
 import {context} from "../context";
 import Path from "path";
 import fs from "fs";
-import {app} from "../services/web";
+import {api} from "../services/web";
 import {PostgradeConfigs} from "../../libs/postgrade/PostgradeConfigs";
 import {InstallationLocation, PostgresContext, PostgresInstanceOptions, sql} from "kitres";
 import {execSync} from "node:child_process";
-import dao from "../services/database/index";
+import dao from "../services/database/pg/index";
 
 const psql = execSync("which psql").toString().trim();
 
-app.get( "/api/admin/setup/:setup", ( req, res ) => {
+api.get( "/api/admin/setup/:setup", (req, res ) => {
     console.log( JSON.stringify( context.env, null, 2 ))
     let configsFile = Path.join( context.env.SETUP, req.params.setup, "setup.json" );
     if( !fs.existsSync( configsFile ) ){
@@ -30,13 +30,15 @@ app.get( "/api/admin/setup/:setup", ( req, res ) => {
         return;
     }
 
-    fs.mkdirSync( `/tmp/postgrade`, {recursive: true});
+    fs.mkdirSync( `/tmp/postgrade`, { recursive: true });
     configs.database.forEach( database =>  {
+        if( !database.extensions.includes( "http" ) ) database.extensions.push( "http" );
         database.setups.forEach( setup => {
         });
     });
 
     configs.hba.forEach( hba => {
+
     });
 
     configs.users.forEach( user => {
