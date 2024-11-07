@@ -9,6 +9,8 @@ lerna-debug.log*
 
 *.js
 *.js.map
+*.d.ts
+*.d.ts.map
 package-lock.json
 
 # Diagnostic reports (https://nodejs.org/api/report.html)
