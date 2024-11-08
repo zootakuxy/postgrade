@@ -1,6 +1,6 @@
 import {Database, HBA, PgUser} from "kitres/src/core/database/instance";
 
-export interface PostgradeConfigs {
+export interface Index {
     database?:Database[]
     users?:PgUser[],
     hba?:HBA[],
