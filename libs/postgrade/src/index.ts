@@ -16,7 +16,7 @@ namespace postgrade {
         hba?:HBA[],
     }
 
-    export function start( opts:Configs, resolve:( error?:Error )=>void ){
+    export function setup( opts:Configs, resolve:( error?:Error )=>void ){
         let origin = `http://${ opts?.setup?.host||"admin" }:${ opts?.setup?.port || 4000}`;
         let volume = opts?.setup?.volume || "/etc/postgrade/setup";
         let destination = Path.join( volume, opts.setup.app );
@@ -40,10 +40,18 @@ namespace postgrade {
         });
 
         fs.writeFileSync( Path.join( volume, opts.setup.app, "setup.json" ), JSON.stringify( override, null, 2 ) );
+
         axios.post( `${ origin }/api/admin/setup/${ opts?.setup?.app }`, opts ).then( value => {
+            let error = new Error( "Falha ao configurar a base de dados!" );
+            error["settings"] = override;
+            error["status"] = value.status;
+            error["statusText"] = value.statusText;
+            error["data"] = value.data;
+            if( value.status !== 200 ) return resolve( error );
 
         }).catch( reason => {
-
+            if( !reason ) reason = new Error( "Falha ao configurar a base de dados! Com error desconhacido!" );
+            return resolve( reason );
         });
     }
 }

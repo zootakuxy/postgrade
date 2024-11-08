@@ -2,7 +2,7 @@ import {context} from "../context/index";
 import Path from "path";
 import fs from "fs";
 import {api} from "../services/web";
-import {Configs} from "../../../libs/postgrade";
+import {Configs} from "../../../libs/postgrade/src";
 import {InstallationLocation, PostgresContext, PostgresInstanceOptions, sql} from "kitres";
 import {execSync} from "node:child_process";
 import dao from "../services/database/pg/index";
