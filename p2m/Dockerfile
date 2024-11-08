@@ -15,7 +15,7 @@ RUN mkdir -p  "/etc/postgrade"
 RUN chmod 777 "/etc/postgrade"
 
 # Copiar o package.json e o package-lock.json para instalar as dependências
-COPY package*.json ./
+COPY p2m/package*.json .
 
 # Instalar as dependências do Node.js
 RUN npm install --omit=dev
