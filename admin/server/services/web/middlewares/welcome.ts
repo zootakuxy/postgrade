@@ -1,5 +1,5 @@
 import cluster from "cluster";
-import {context} from "../../../context";
+import {context} from "../../../context/index";
 import {api} from "../server";
 
 api.use( (req, res, next) => {

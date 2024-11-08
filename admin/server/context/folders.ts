@@ -47,10 +47,10 @@ export const Folders = {
     },
 
     //Application
-    get views(){ return folder( __dirname, /*language=file-reference*/ "../../client/views")},
-    get public(){ return folder( __dirname, /*language=file-reference*/ "../../client/public")},
-    get contents(){ return folder( __dirname, /*language=file-reference*/ "../../client/contents")},
-    get bin(){ return folder( __dirname, /*language=file-reference*/ "../../bin")},
+    get views(){ return folder( __dirname, /*language=file-reference*/ "../../../client/views")},
+    get public(){ return folder( __dirname, /*language=file-reference*/ "../../../client/public")},
+    get contents(){ return folder( __dirname, /*language=file-reference*/ "../../../client/contents")},
+    get bin(){ return folder( __dirname, /*language=file-reference*/ "../../../bin")},
 
 
     //Application

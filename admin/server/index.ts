@@ -1,12 +1,14 @@
+import {definition, EnvOptions} from "../env";
+
 require( "source-map-support" ).install();
 import fs from "fs";
 import Path from "path";
 
-import {ArgsOptions, environments} from "../env";
+import {ArgsOptions, environments} from "../../libs/utils/env";
 import {context} from "./context/index";
 
-export function startServer( opts?:ArgsOptions ){
-    let load = environments( opts );
+export function startServer( opts?:ArgsOptions<EnvOptions> ){
+    let load = environments<EnvOptions>( EnvOptions, definition, opts );
 
     if( load.failures.length ) {
         load.failures.forEach( value => {
