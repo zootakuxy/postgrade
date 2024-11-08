@@ -17,6 +17,7 @@
     "@types/pg-escape": "^0.2.3"
   },
   "dependencies": {
-    "kitres": "^1.1.1"
+    "kitres": "^1.1.1",
+    "mongodb": "^6.10.0"
   }
 }
