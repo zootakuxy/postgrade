@@ -1,7 +1,7 @@
 services:
   # Serviço do PostgreSQL
   postgres:
-    build: ./pg
+    image: zootakuxy/postgrade-pg
     container_name: ${SERVICE}-postgres
     hostname: pg.${DOMAIN}
     environment:
@@ -53,9 +53,7 @@ services:
   admin:
     container_name: ${SERVICE}-admin
     hostname: admin.${DOMAIN}
-    build:
-      context: .
-      dockerfile: admin/Dockerfile
+    image: zootakuxy/postgrade-admin
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -82,9 +80,7 @@ services:
   p2m:
     container_name: ${SERVICE}-p2m
     hostname: p2m.${DOMAIN}
-    build:
-      context: .
-      dockerfile: p2m/Dockerfile
+    image: zootakuxy/postgrade-p2m
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}

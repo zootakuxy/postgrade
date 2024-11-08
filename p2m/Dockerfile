@@ -1,16 +1,25 @@
 # Use a imagem oficial do Node.js como base
-FROM node:18-alpine
+FROM node:20-alpine
 
-LABEL name="Postgrade p2m" \
+LABEL name="Postgrade PGAdmin" \
     version="1.0"
+
 # Expor a porta onde a aplicação Express estará rodando
 EXPOSE 5000
+
+VOLUME [ "/etc/postgrade" ]
 
 # Definir o diretório de trabalho dentro do contêiner
 WORKDIR /usr/src/app
 
+# Definir a variável de ambiente para o PostgreSQL
+ENV POSTGRES_SUPERUSER=postgres
+ENV POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+ENV POSTGRES_MANAGE=postgres
+ENV POSTGRES_HOST=pg.postgrade
+
 # Define volumes
-VOLUME [ "/etc/postgrade" ]
+
 RUN mkdir -p  "/etc/postgrade"
 RUN chmod 777 "/etc/postgrade"
 
@@ -21,17 +30,10 @@ COPY p2m/package*.json .
 RUN npm install --omit=dev
 
 # Copiar o código-fonte da aplicação para dentro do contêiner
-COPY admin ./
-COPY libs ../libs
+COPY p2m p2m
+COPY libs libs
 
-# Expor a porta onde a aplicação estará rodando (opcional)
 
-# Definir variáveis de ambiente para as conexões com PostgreSQL e MongoDB
-ENV POSTGRES_USER=postgres
-ENV POSTGRES_PASSWORD=mysecretpassword
-ENV POSTGRES_DB=mydatabase
-ENV POSTGRES_HOST=postgres
-ENV MONGO_URI=mongodb://root:rootpassword@mongo:27017
 
 # Iniciar a aplicação Node.js
-CMD ["node", "server"]
+CMD ["node", "p2m/server"]

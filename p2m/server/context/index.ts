@@ -1,20 +1,16 @@
 import cluster from "cluster";
 import {EnvMode, EnvOptions} from "../../env";
 import { manifest } from "./manifest";
-import {nanoid} from "nanoid";
 
 export class Context {
-
     env:EnvOptions;
     manifest: typeof manifest
     mode: EnvMode
     instanceCheck: string;
-
     constructor() {
         this.env = {} as any;
         this.manifest = manifest;
         this.mode = "dev";
-        this.instanceCheck  = nanoid( 64 );
     }
 
     define( env:EnvOptions ){
