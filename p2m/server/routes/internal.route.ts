@@ -1,5 +1,5 @@
-import {app} from "../services/web";
-import mg from "../services/database/mg";
+import {app} from "../services/web/index";
+import mg from "../services/database/mg/index";
 import { InsertManyResult, InsertOneResult } from "mongodb";
 import {context} from "../context/index";
 
@@ -53,40 +53,7 @@ async function inserts( db:string, collection:string,  items:any, opts:any){
 
     return response;
 }
-async function updates( db:string, collection:string, method:string,  filter:any, sets:any, opts?:any){
 
-    await mg.client.connect();
-    const database = mg.client.db( db );
-    const col = database.collection( collection );
-
-    if( ["one", "updateOne", "update_one" ].includes( method||"one" )) {
-        // Inserção de múltiplos documentos
-        const updates = await col.updateOne(
-            filter,
-            sets,
-            opts
-        );
-        return {
-            return: true,
-            method: "updateOne",
-            updates,
-            ids: [ updates.upsertedId ]
-        }
-    } else {
-        const updates = await col.updateMany(
-            filter,
-            sets,
-            opts
-        );
-
-        return {
-            result: true,
-            method: "updateMany",
-            updates,
-            ids:updates.upsertedId
-        }
-    }
-}
 app.post( "/insert/:db/:collection", (req, res, next) => {
     let items = req.body.items;
     let opts = req.body.opts;

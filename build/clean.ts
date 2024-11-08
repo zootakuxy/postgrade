@@ -5,8 +5,8 @@ export function cleanJs( dirname ){
     //language=file-reference
     if( !dirname ) dirname = Path.join( __dirname, "../" );
     [
-        { basename: /*language=file-reference*/ "/server",      math: /.*.js$/, },
-        { basename: /*language=file-reference*/ "/server",      math: /.*.js.map$/, },
+        { basename: /*language=file-reference*/ "/olds/server",      math: /.*.js$/, },
+        { basename: /*language=file-reference*/ "/olds/server",      math: /.*.js.map$/, },
         { basename: /*language=file-reference*/ "/build",       math: /.*.js$/, },
         { basename: /*language=file-reference*/ "/database",    math: /.*.js$/, },
         { basename: /*language=file-reference*/ "/database",    math: /.*.js.map$/ },

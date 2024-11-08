@@ -1,0 +1,111 @@
+version: '3.8'
+
+services:
+  # Serviço do PostgreSQL
+  postgres:
+    build: ./pg
+    container_name: ${DOMAIN}.postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres-storage:/var/lib/postgresql/data
+      - postgrade-storage:/etc/postgrade
+    networks:
+      - domain
+    ports:
+      - "5421:5432"
+    restart: always
+    deploy:
+      resources:
+        limits:
+          memory: 2g
+          cpus: 3.0
+
+  # Serviço do MongoDB
+  mongo:
+    image: mongo:latest
+    container_name: ${DOMAIN}.mongo
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD}
+      MONGO_INITDB_DATABASE: ${MONGO_DB}
+    volumes:
+      - mongo-storage:/data/db
+      - postgrade-storage:/etc/postgrade
+    networks:
+      - domain
+    ports:
+      - "27017:27017"
+    restart: always
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+          cpus: 1.0
+
+  # Serviço de Administração PostgreSQL (API)
+  admin:
+    container_name: ${DOMAIN}.admin
+    build:
+      context: .
+      dockerfile: admin/Dockerfile
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_HOST: postgres
+    volumes:
+      - postgrade-storage:/etc/postgrade
+    networks:
+      - domain
+    ports:
+      - "4000:4000"
+    depends_on:
+      - postgres
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+          cpus: 0.5
+
+  # Serviço P2M (PostgreSQL para MongoDB)
+  p2m:
+    container_name: ${DOMAIN}.p2m
+    build:
+      context: .
+      dockerfile: p2m/Dockerfile
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_HOST: postgres
+      MONGO_URI: mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongo:27017
+    networks:
+      - domain
+    depends_on:
+      - postgres
+      - mongo
+    ports:
+      - "5000:5000"
+    restart: always
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+          cpus: 2.0
+
+volumes:
+  postgres-storage:
+    name: ${SERVICE}-postgres-storage
+  mongo-storage:
+    name: ${SERVICE}-mongo-storage
+  postgrade-storage:
+    name: ${SERVICE}-postgrade-storage
+
+networks:
+  domain:
+    driver: bridge
+    name: net.${DOMAIN}
+
