@@ -8,12 +8,13 @@ export class EnvOptions {
     NAME: string =  "POSTGRADE:ADMIN"
     MODE: EnvMode = "dev"
     CONFIGS: string = "/etc/postgrade/main.conf"
-    SETUP: string = "/postgrade/setups"
+    SETUP: string = "/etc/postgrade/setup"
 
     POSTGRES_NAME: string = "postgres"
     POSTGRES_SUPERUSER: string = "postgres"
     POSTGRES_PASSWORD: string = null
     POSTGRES_HOST: string = "127.0.0.1"
+    POSTGRES_CLUSTER: string = "/var/lib/postgresql/data"
     POSTGRES_VERSION:  number = 14
     POSTGRES_PORT: number = 5432
     POSTGRES_SERVICE: "postgresql.service"

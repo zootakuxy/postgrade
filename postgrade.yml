@@ -58,6 +58,7 @@ services:
       POSTGRES_HOST: postgres
     volumes:
       - postgrade-storage:/etc/postgrade
+      - postgres-storage:/var/lib/postgresql/data
     networks:
       - domain
     ports:

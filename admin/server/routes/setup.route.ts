@@ -1,8 +1,8 @@
 import {context} from "../context/index";
 import Path from "path";
 import fs from "fs";
-import {api} from "../services/web/index";
-import {PostgradeConfigs} from "../../../libs/postgrade/PostgradeConfigs";
+import {api} from "../services/web";
+import {Configs} from "../../../libs/postgrade";
 import {InstallationLocation, PostgresContext, PostgresInstanceOptions, sql} from "kitres";
 import {execSync} from "node:child_process";
 import dao from "../services/database/pg/index";
@@ -21,7 +21,7 @@ api.get( "/api/admin/setup/:setup", (req, res ) => {
         return;
     }
 
-    let configs:PostgradeConfigs;
+    let configs:Configs;
     try { configs = JSON.parse( fs.readFileSync( configsFile ).toString() ); }catch (e){
         res.json({
             result: false,
@@ -30,7 +30,6 @@ api.get( "/api/admin/setup/:setup", (req, res ) => {
         return;
     }
 
-    fs.mkdirSync( `/tmp/postgrade`, { recursive: true });
     configs.database.forEach( database =>  {
         if( !database.extensions.includes( "http" ) ) database.extensions.push( "http" );
         database.setups.forEach( setup => {
@@ -131,8 +130,7 @@ api.get( "/api/admin/setup/:setup", (req, res ) => {
 })
 
 
-function hba( opts:PostgradeConfigs ){
-
+function hba( opts:Configs ){
     let update = ( filename:string, raw:string, lines:string[])=>{
         if( lines.length ){
             let scripts  = `
