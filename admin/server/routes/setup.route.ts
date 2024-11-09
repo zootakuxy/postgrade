@@ -9,11 +9,15 @@ import dao from "../services/database/pg/index";
 
 const psql = execSync("which psql").toString().trim();
 
-api.get( "/api/admin/setup/:setup", (req, res ) => {
-    console.log( JSON.stringify( context.env, null, 2 ))
+api.post( "/api/admin/setup/:setup", (req, res ) => {
     let configsFile = Path.join( context.env.SETUP, req.params.setup, "setup.json" );
+    let respond = ( respose )=>{
+        console.log( context.tag, `Response for setup`, req.path, respose );
+        res.json( respose );
+        return;
+    }
     if( !fs.existsSync( configsFile ) ){
-        res.json({
+        respond({
             result: false,
             message: `Setup configs not exists!`,
             configsFile
@@ -23,7 +27,7 @@ api.get( "/api/admin/setup/:setup", (req, res ) => {
 
     let configs:Configs;
     try { configs = JSON.parse( fs.readFileSync( configsFile ).toString() ); }catch (e){
-        res.json({
+        respond({
             result: false,
             message: "Invalid setup configs file"
         })
@@ -64,7 +68,7 @@ api.get( "/api/admin/setup/:setup", (req, res ) => {
         },
         installerLocation: InstallationLocation.REMOTE,
         clusterLocation: InstallationLocation.REMOTE,
-        service: context.env.POSTGRES_SERVICE,
+        service: context.env.SERVICE,
         serverHost: context.env.POSTGRES_HOST,
         cluster: context.env.POSTGRES_CLUSTER,
         cli: {
@@ -101,7 +105,7 @@ api.get( "/api/admin/setup/:setup", (req, res ) => {
     let handler = ()=>{
         setup.setup( ( error, result) => {
             if( error ) {
-                console.error( context.tag, `Error ao efetuar o setup da base de dados!` );
+                console.error( context.tag, `Error ao efetuar o setup da base de dados!`, error );
                 return res.json( {
                     result: false,
                     message: `Error ao efetuar o setup da base de dados`,
@@ -109,7 +113,7 @@ api.get( "/api/admin/setup/:setup", (req, res ) => {
                     setups: result
                 })
             }
-            return res.json({
+            return respond({
                 result: result?.status,
                 message: `Error ao efetuar o setup da base de dados`,
                 setups: result
@@ -121,10 +125,13 @@ api.get( "/api/admin/setup/:setup", (req, res ) => {
     dao.core.query( sql`
       select * from pg_reload_conf()
     `, (error, result) => {
-        if( error ) return res.json({
-            result: false,
-            message: "Reload configs failed!",
-        });
+        if( error ){
+            console.error( context.tag, `Error reloading configs`, error );
+            return respond({
+                result: false,
+                message: "Reload configs failed!",
+            });
+        }
         handler();
     });
 })

@@ -5,22 +5,22 @@ export type EnvMode = "dev" | "test" | "prop" | "public";
 console.log( process.env )
 
 export class EnvOptions {
+    SERVICE:string = "srv-postgrade"
+    DOMAIN:string = "postgrade.domain"
     NAME: string =  "POSTGRADE:ADMIN"
     MODE: EnvMode = "dev"
     CONFIGS: string = "/etc/postgrade/main.conf"
-    SETUP: string = "/etc/postgrade/setup"
+    SETUP: string = "/etc/postgrade/setups"
 
     POSTGRES_NAME: string = "postgres"
     POSTGRES_SUPERUSER: string = "postgres"
     POSTGRES_PASSWORD: string = null
-    POSTGRES_HOST: string = "127.0.0.1"
+    POSTGRES_HOST: string = "pg.db.srv"
     POSTGRES_CLUSTER: string = "/var/lib/postgresql/data"
     POSTGRES_VERSION:  number = 14
     POSTGRES_PORT: number = 5432
-    POSTGRES_SERVICE: "postgresql.service"
 
-    SERVER_PORT: number = 3000
-    SERVER_INTERNAL: number = 4444
+    SERVER_PORT: number = 80
     SERVER_PROTOCOL: "http"|"https" = "http"
 
     MAIL_PASSWORD: string

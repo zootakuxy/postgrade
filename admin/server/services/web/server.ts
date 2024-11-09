@@ -15,4 +15,3 @@ export {
     app
 }
 server.listen( context.env.SERVER_PORT );
-internal.listen( context.env.SERVER_INTERNAL );

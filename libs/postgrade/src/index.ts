@@ -16,9 +16,24 @@ namespace postgrade {
         hba?:HBA[],
     }
 
-    export function setup( opts:Configs, resolve:( error?:Error )=>void ){
-        let origin = `http://${ opts?.setup?.host||"admin" }:${ opts?.setup?.port || 4000}`;
-        let volume = opts?.setup?.volume || "/etc/postgrade/setup";
+    export type PostgradeError = Error & {
+        data?:any
+        settings?:Configs
+        statusText?:string
+        status?:number
+    }
+
+    export type PostgradeResponse = {
+        result?:boolean
+        data?:any
+        settings?:Configs
+        statusText?:string
+        status?:number,
+        message?:string
+    }
+    export function setup( opts:Configs, resolve:( error?:PostgradeError, response?:PostgradeResponse)=>void ){
+        let origin = `http://${ opts?.setup?.host||"admin" }:${ opts?.setup?.port || 80 }`;
+        let volume = opts?.setup?.volume || "/etc/postgrade/setups";
         let destination = Path.join( volume, opts.setup.app );
         fs.mkdirSync( destination, { recursive:true});
         fs.mkdirSync( Path.join( destination, "setups" ), { recursive:true});
@@ -41,17 +56,28 @@ namespace postgrade {
 
         fs.writeFileSync( Path.join( volume, opts.setup.app, "setup.json" ), JSON.stringify( override, null, 2 ) );
 
-        axios.post( `${ origin }/api/admin/setup/${ opts?.setup?.app }`, opts ).then( value => {
-            let error = new Error( "Falha ao configurar a base de dados!" );
-            error["settings"] = override;
-            error["status"] = value.status;
-            error["statusText"] = value.statusText;
-            error["data"] = value.data;
-            if( value.status !== 200 ) return resolve( error );
+        axios.post( `${ origin }/api/admin/setup/${ opts?.setup?.app }`, opts ).then( response => {
+            let error = new Error( "Falha ao configurar a base de dados!" ) as PostgradeError;
+            error.settings = override;
+            error.status = response.status;
+            error.statusText = response.statusText;
+            error.data = response.data;
+            if( response.status !== 200 ) return resolve( null, {
+                result: response.status === 200
+                    && !!response.data?.result
+                ,
+                settings: override,
+                data: response.data,
+                status: response.status,
+                statusText: response.statusText,
+                message: response.data?.message
+            });
 
         }).catch( reason => {
-            if( !reason ) reason = new Error( "Falha ao configurar a base de dados! Com error desconhacido!" );
-            return resolve( reason );
+            let error = reason as PostgradeError;
+            if( !error ) error = new Error( "Falha ao configurar a base de dados! Com error desconhacido!" );
+            error.settings = override;
+            return resolve( error );
         });
     }
 }

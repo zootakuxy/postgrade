@@ -11,7 +11,7 @@ export class EnvOptions {
     POSTGRES_NAME: string = "postgres"
     POSTGRES_SUPERUSER: string = "postgres"
     POSTGRES_PASSWORD: string = null
-    POSTGRES_HOST: string = "127.0.0.1"
+    POSTGRES_HOST: string = "pg.db.srv"
     POSTGRES_VERSION:  number = 14
     POSTGRES_PORT: number = 5432
     POSTGRES_SERVICE: "postgresql.service"

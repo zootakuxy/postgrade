@@ -35,14 +35,8 @@ if( require.main.filename === __filename ){
 }
 
 process.on('SIGINT', () => {
-    console.log('Capturado SIGINT! O processo será encerrado...');
-
-    // Realizar qualquer ação antes de sair, como liberar recursos ou finalizar conexões
-    // Exemplo: fechar uma conexão com o banco de dados
-
-    // Encerra o processo após 1 segundo (após fazer alguma tarefa, se necessário)
+    console.log('Ctrl+c... exiting');
     setTimeout(() => {
-        console.log('Finalizando o processo');
         process.exit(0);  // Encerra o processo com código de sucesso
-    }, 1000);
+    }, 500);
 });

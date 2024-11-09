@@ -5,7 +5,7 @@ LABEL name="Postgrade PGAdmin" \
     version="1.0"
 
 # Expor a porta onde a aplicação Express estará rodando
-EXPOSE 4000
+EXPOSE 80
 
 VOLUME [ "/etc/postgrade" ]
 
@@ -16,7 +16,7 @@ WORKDIR /usr/src/app
 ENV POSTGRES_SUPERUSER=postgres
 ENV POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
 ENV POSTGRES_MANAGE=postgres
-ENV POSTGRES_HOST=pg.postgrade
+ENV POSTGRES_HOST=pg.db.srv
 
 # Define volumes
 

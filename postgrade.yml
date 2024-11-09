@@ -1,9 +1,11 @@
 services:
   # Serviço do PostgreSQL
-  postgres:
+  pg.db.srv:
     image: zootakuxy/postgrade-pg
     container_name: ${SERVICE}-postgres
-    hostname: pg.${DOMAIN}
+    hostname: pg.db.${DOMAIN}
+    env_file:
+      - ${POSTGRES_ENVFILE:-ignore}
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -15,9 +17,7 @@ services:
       - domain
     ports:
       - "${POSTGRES_PORT}:5432"
-    restart: always
-    profiles:
-      - ${DOMAIN}
+    restart: on-failure
     deploy:
       resources:
         limits:
@@ -25,10 +25,13 @@ services:
           cpus: 3.0
 
   # Serviço do MongoDB
-  mongo:
+  mg.db.srv:
     image: mongo:latest
     container_name: ${SERVICE}-mongo
-    hostname: mongo.${DOMAIN}
+    hostname: mg.db.${DOMAIN}
+    env_file:
+      - ${MONGDB_ENVFILE:-ignore}
+
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD}
@@ -40,9 +43,7 @@ services:
       - domain
     ports:
       - "${MONGO_PORT}:27017"
-    restart: always
-    profiles:
-      - ${DOMAIN}
+    restart: on-failure
     deploy:
       resources:
         limits:
@@ -50,15 +51,16 @@ services:
           cpus: 1.0
 
   # Serviço de Administração PostgreSQL (API)
-  admin:
+  admin.internal.srv:
     container_name: ${SERVICE}-admin
-    hostname: admin.${DOMAIN}
+    hostname: admin.internal.${DOMAIN}
     image: zootakuxy/postgrade-admin
+    env_file:
+      - ${ADMIN_ENVFILE:-ignore}
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_HOST: postgres
     volumes:
       - postgrade-storage:/etc/postgrade
       - postgres-storage:/var/lib/postgresql/data
@@ -67,9 +69,8 @@ services:
     ports:
       - "${ADMIN_PORT}:4000"
     depends_on:
-      - postgres
-    profiles:
-      - ${DOMAIN}
+      - pg.db.srv
+    restart: on-failure
     deploy:
       resources:
         limits:
@@ -77,24 +78,23 @@ services:
           cpus: 0.5
 
   # Serviço P2M (PostgreSQL para MongoDB)
-  p2m:
+  p2m.internal.srv:
     container_name: ${SERVICE}-p2m
-    hostname: p2m.${DOMAIN}
+    hostname: p2m.internal.${DOMAIN}
     image: zootakuxy/postgrade-p2m
+    env_file:
+      - ${P2M_ENVFILE:-ignore}
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_HOST: postgres
       MONGO_URI: mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongo:27017
     networks:
       - domain
     depends_on:
-      - postgres
-      - mongo
-    restart: always
-    profiles:
-      - ${DOMAIN}
+      - pg.db.srv
+      - mg.db.srv
+    restart: on-failure
     deploy:
       resources:
         limits:
