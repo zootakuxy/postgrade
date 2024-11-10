@@ -41,4 +41,4 @@ COPY libs libs
 
 
 # Iniciar a aplicação Node.js
-CMD ["node", "admin/server"]
+CMD [ "node", "admin/server" ]

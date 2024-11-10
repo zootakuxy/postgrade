@@ -5,7 +5,7 @@ services:
     container_name: ${SERVICE:-srv-postgrade}-postgres
     hostname: pg.db.${DOMAIN:-postgrade.srv}
     env_file:
-      - ${POSTGRES_ENVFILE:-ignore}
+      - .env.postgres
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -110,6 +110,11 @@ volumes:
     name: ${SERVICE:-srv-postgrade}-mongo-storage
   postgrade-storage:
     name: ${SERVICE:-srv-postgrade}-postgrade-storage
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${POSTGRADE_VOLUME:-${HOME}/AppsData/postgrade}
 
 networks:
   domain:
