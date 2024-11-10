@@ -8,5 +8,8 @@
   "author": "zootakuxy",
   "license": "ISC",
   "types": "src/index.d.ts",
-  "description": ""
+  "description": "",
+  "devDependencies": {
+    "ts-json-schema-generator": "^2.3.0"
+  }
 }
