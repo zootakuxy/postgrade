@@ -21,6 +21,28 @@ complete_path() {
     COMPREPLY=("${suggestions[@]}")
     return 0
 }
+echo "$(complete_path)"
+
+PathResolve() {
+  local UsePath="$1"
+  local CurrentDir=$(pwd)
+
+  if [ ! -f "${UsePath}" ]; then
+    mkdir -p "${UsePath}"
+    cd "${UsePath}"
+    local Resolved=$(pwd)
+    cd "${CurrentDir}"
+    rm -rf "${UsePath}"
+  else
+    cd "${UsePath}"
+    local Resolved=$(pwd)
+    cd "${CurrentDir}"
+  fi
+  echo "${Resolved}"
+}
+
+# Registrar a função de autocomplete para POSTGRADE_VOLUME
+complete -F complete_path POSTGRADE_VOLUME
 
 # Função para solicitar uma senha com mascaramento de caracteres
 ask_password() {
@@ -90,18 +112,9 @@ SERVICE=${SERVICE:-$DEFAULT_SERVICE}
 read -p "DOMAIN [${DEFAULT_DOMAIN}]: " DOMAIN
 DOMAIN=${DOMAIN:-$DEFAULT_DOMAIN}
 
-
 read -p "POSTGRADE_VOLUME [${DEFAULT_POSTGRADE_VOLUME}]: " POSTGRADE_VOLUME
 POSTGRADE_VOLUME=${POSTGRADE_VOLUME:-$DEFAULT_POSTGRADE_VOLUME}
-
-# Usando autocompletar para POSTGRADE_VOLUME
-complete -F complete_path POSTGRADE_VOLUME
-
-# Verifica se o caminho de POSTGRADE_VOLUME é relativo e o converte para absoluto
-if [ -n "$POSTGRADE_VOLUME" ] && [ ! -d "$POSTGRADE_VOLUME" ]; then
-    POSTGRADE_VOLUME=$(realpath "$POSTGRADE_VOLUME")
-fi
-
+POSTGRADE_VOLUME=$(PathResolve "$POSTGRADE_VOLUME")
 
 read -p "ADMIN_PORT [${DEFAULT_ADMIN_PORT}]: " ADMIN_PORT
 ADMIN_PORT=${ADMIN_PORT:-$DEFAULT_ADMIN_PORT}
