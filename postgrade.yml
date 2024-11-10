@@ -114,7 +114,7 @@ volumes:
     driver_opts:
       type: none
       o: bind
-      device: ${POSTGRADE_VOLUME:-${HOME}/AppsData/postgrade}
+      device: ${POSTGRADE_VOLUME}
 
 networks:
   domain:

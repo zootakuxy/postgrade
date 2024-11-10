@@ -21,7 +21,36 @@ complete_path() {
     COMPREPLY=("${suggestions[@]}")
     return 0
 }
-echo "$(complete_path)"
+
+MaxValueNumber() {
+  local var_name="$1"
+  local default_value="$2"
+  local max_value=-1  # Começar com um valor negativo para garantir que qualquer valor encontrado será maior
+
+  # Itera sobre todos os arquivos .env.${PROJECT} no diretório atual
+  for env_file in .env.*; do
+    if [ -f "$env_file" ]; then
+      # Extrai o valor da variável especificada
+      local value=$(grep -oP "^${var_name}=\K\d+" "$env_file")
+
+      # Verifica se encontrou um valor numérico e maior que o valor atual max_value
+      if [ -n "$value" ]; then
+        if [ "$value" -gt "$max_value" ]; then
+          max_value="$value"
+        fi
+      fi
+    fi
+  done
+
+  # Se nenhum valor for encontrado, retorna o valor padrão
+  if [ "$max_value" -eq -1 ]; then
+    echo "$default_value"
+  else
+    echo "$(($max_value+1))"
+  fi
+}
+
+
 
 PathResolve() {
   local UsePath="$1"
@@ -84,23 +113,41 @@ ask_password() {
     eval "$fieldName=\"$password\""
 }
 
-# Carrega o arquivo .env, se ele existir
-if [ -f .env ]; then
-    echo "Carregando valores atuais do .env como padrão..."
-    source .env
+DEFAULT_PROJECT="postgrade"
+PROJECT=${PROJECT:-$(basename $1)}
+
+# Remover o prefixo ".env." de PROJECT, caso presente
+if [[ "$PROJECT" =~ ^\.env\.(.*) ]]; then
+  PROJECT="${BASH_REMATCH[1]}"
 fi
 
-# Valores padrão
-DEFAULT_SERVICE=${SERVICE-"postgrade"}
-DEFAULT_DOMAIN=${DOMAIN-"postgrade.srv"}
-DEFAULT_POSTGRADE_VOLUME=${POSTGRADE_VOLUME-"${HOME}/AppsData/postgrade"}
 
-DEFAULT_ADMIN_PORT=${ADMIN_PORT-4000}
-DEFAULT_POSTGRES_PORT=${POSTGRES_PORT-5432}
+# Exibe a mensagem solicitando a senha e sugere o valor atual, se existente
+if [ -n "$PROJECT" ]; then
+  PROJECT=$PROJECT
+else
+  # Solicitar ao usuário as variáveis necessárias com valores padrão do .env ou padrão definido
+  read -p "PROJECT NAME [${DEFAULT_PROJECT}]: " PROJECT
+  PROJECT=${PROJECT:-$DEFAULT_PROJECT}
+fi
+
+# Carrega o arquivo .env, se ele existir
+if [ -f ".env.${PROJECT}" ]; then
+    echo "Carregando valores atuais do .env como padrão..."
+    source ".env.${PROJECT}"
+fi
+
+
+# Valores padrão
+DEFAULT_SERVICE=${SERVICE-"srv-${PROJECT}"}
+DEFAULT_DOMAIN=${DOMAIN-"${PROJECT}.srv"}
+
+DEFAULT_ADMIN_PORT=$(MaxValueNumber "ADMIN_PORT" 4000)
+DEFAULT_POSTGRES_PORT=$(MaxValueNumber "POSTGRES_PORT" 5432)
 DEFAULT_POSTGRES_USER=${POSTGRES_USER-"postgres"}
 DEFAULT_POSTGRES_PASSWORD=${POSTGRES_PASSWORD-}
 DEFAULT_POSTGRES_DATABASE=${POSTGRES_DATABASE-"postgres"}
-DEFAULT_MONGO_PORT=${MONGO_PORT-27017}
+DEFAULT_MONGO_PORT=$(MaxValueNumber "MONGO_PORT" 27017)
 DEFAULT_MONGO_USER=${MONGO_USER-"root"}
 DEFAULT_MONGO_DB=${MONGO_DB-"mdb"}
 DEFAULT_MONGO_PASSWORD=${MONGO_PASSWORD-}
@@ -111,6 +158,8 @@ SERVICE=${SERVICE:-$DEFAULT_SERVICE}
 
 read -p "DOMAIN [${DEFAULT_DOMAIN}]: " DOMAIN
 DOMAIN=${DOMAIN:-$DEFAULT_DOMAIN}
+
+DEFAULT_POSTGRADE_VOLUME=${POSTGRADE_VOLUME:-"${HOME}/AppsData/postgrade/${DOMAIN}"}
 
 read -p "POSTGRADE_VOLUME [${DEFAULT_POSTGRADE_VOLUME}]: " POSTGRADE_VOLUME
 POSTGRADE_VOLUME=${POSTGRADE_VOLUME:-$DEFAULT_POSTGRADE_VOLUME}
@@ -146,7 +195,7 @@ ask_password "MONGO_PASSWORD" "$DEFAULT_MONGO_PASSWORD"
 echo "Senha do MongoDB definida."
 
 # Cria o arquivo .env com os valores fornecidos
-cat <<EOL > .env
+cat <<EOL > ".env.${PROJECT}"
 ## Geral Configs
 SERVICE=$SERVICE
 DOMAIN=$DOMAIN
@@ -168,4 +217,4 @@ MONGO_USER=$MONGO_USER
 MONGO_PASSWORD=$MONGO_PASSWORD
 EOL
 
-echo ".env criado com sucesso."
+echo ".env.${PROJECT} criado com sucesso."
