@@ -2,14 +2,14 @@ services:
   # Serviço do PostgreSQL
   pg.db.srv:
     image: zootakuxy/postgrade-pg
-    container_name: ${SERVICE}-postgres
-    hostname: pg.db.${DOMAIN}
+    container_name: ${SERVICE:-srv-postgrade}-postgres
+    hostname: pg.db.${DOMAIN:-postgrade.srv}
     env_file:
       - ${POSTGRES_ENVFILE:-ignore}
     environment:
-      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_DB: ${POSTGRES_DB:-postgres}
     volumes:
       - postgres-storage:/var/lib/postgresql/data
       - postgrade-storage:/etc/postgrade
@@ -27,15 +27,15 @@ services:
   # Serviço do MongoDB
   mg.db.srv:
     image: mongo:latest
-    container_name: ${SERVICE}-mongo
-    hostname: mg.db.${DOMAIN}
+    container_name: ${SERVICE:-srv-postgrade}-mongo
+    hostname: mg.db.${DOMAIN:-postgrade.srv}
     env_file:
       - ${MONGDB_ENVFILE:-ignore}
 
     environment:
-      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER}
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER:-root}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD}
-      MONGO_INITDB_DATABASE: ${MONGO_DB}
+      MONGO_INITDB_DATABASE: ${MONGO_DB:-mdb}
     volumes:
       - mongo-storage:/data/db
       - postgrade-storage:/etc/postgrade
@@ -52,15 +52,15 @@ services:
 
   # Serviço de Administração PostgreSQL (API)
   admin.internal.srv:
-    container_name: ${SERVICE}-admin
-    hostname: admin.internal.${DOMAIN}
+    container_name: ${SERVICE:-srv-postgrade}-admin
+    hostname: admin.internal.${DOMAIN:-postgrade.net}
     image: zootakuxy/postgrade-admin
     env_file:
       - ${ADMIN_ENVFILE:-ignore}
     environment:
-      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_DB: ${POSTGRES_DB:-postgres}
     volumes:
       - postgrade-storage:/etc/postgrade
       - postgres-storage:/var/lib/postgresql/data
@@ -79,16 +79,16 @@ services:
 
   # Serviço P2M (PostgreSQL para MongoDB)
   p2m.internal.srv:
-    container_name: ${SERVICE}-p2m
-    hostname: p2m.internal.${DOMAIN}
+    container_name: ${SERVICE:-srv-postgrade}-p2m
+    hostname: p2m.internal.${DOMAIN:-postgrade.srv}
     image: zootakuxy/postgrade-p2m
     env_file:
       - ${P2M_ENVFILE:-ignore}
     environment:
-      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
-      MONGO_URI: mongodb://${MONGO_USER}:${MONGO_PASSWORD}@mongo:27017
+      POSTGRES_DB: ${POSTGRES_DB:-postgres}
+      MONGO_URI: mongodb://${MONGO_USER:-root}:${MONGO_PASSWORD}@mongo:27017
     networks:
       - domain
     depends_on:
@@ -105,13 +105,13 @@ services:
 
 volumes:
   postgres-storage:
-    name: ${SERVICE}-postgres-storage
+    name: ${SERVICE:-srv-postgrade}-postgres-storage
   mongo-storage:
-    name: ${SERVICE}-mongo-storage
+    name: ${SERVICE:-srv-postgrade}-mongo-storage
   postgrade-storage:
-    name: ${SERVICE}-postgrade-storage
+    name: ${SERVICE:-srv-postgrade}-postgrade-storage
 
 networks:
   domain:
     driver: bridge
-    name: ${DOMAIN}
+    name: ${DOMAIN:-postgrade.srv}
