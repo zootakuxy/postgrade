@@ -1,11 +1,31 @@
+volumes:
+  postgres-storage:
+    name: ${SERVICE:-srv-postgrade}-postgres-storage
+  mongo-storage:
+    name: ${SERVICE:-srv-postgrade}-mongo-storage
+  postgrade-storage:
+    name: ${SERVICE:-srv-postgrade}-postgrade-storage
+    external: true
+
+networks:
+  domain:
+    driver: bridge
+    name: ${DOMAIN:-postgrade.srv}
+    external: true
+
 services:
   # Serviço do PostgreSQL
   pg.db.srv:
     image: zootakuxy/postgrade-pg
+    build:
+      context: .
+      dockerfile: pg/Dockerfile
     container_name: ${SERVICE:-srv-postgrade}-postgres
     hostname: pg.db.${DOMAIN:-postgrade.srv}
     env_file:
-      - .env.postgres
+      - ${POSTGRES_ENVFILE:-ignore}
+    extra_hosts:
+      - host.docker.internal:172.17.0.1
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -17,7 +37,7 @@ services:
       - domain
     ports:
       - "${POSTGRES_PORT:-}:5432"
-    restart: on-failure
+    restart: always
     deploy:
       resources:
         limits:
@@ -31,7 +51,6 @@ services:
     hostname: mg.db.${DOMAIN:-postgrade.srv}
     env_file:
       - ${MONGDB_ENVFILE:-ignore}
-
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER:-root}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD}
@@ -41,9 +60,11 @@ services:
       - postgrade-storage:/etc/postgrade
     networks:
       - domain
+    extra_hosts:
+      - host.docker.internal:172.17.0.1
     ports:
       - "${MONGO_PORT:-}:27017"
-    restart: on-failure
+    restart: always
     deploy:
       resources:
         limits:
@@ -52,9 +73,12 @@ services:
 
   # Serviço de Administração PostgreSQL (API)
   admin.internal.srv:
+    image: zootakuxy/postgrade-admin
+    build:
+      context: .
+      dockerfile: admin/Dockerfile
     container_name: ${SERVICE:-srv-postgrade}-admin
     hostname: admin.internal.${DOMAIN:-postgrade.net}
-    image: zootakuxy/postgrade-admin
     env_file:
       - ${ADMIN_ENVFILE:-ignore}
     environment:
@@ -65,58 +89,53 @@ services:
       - postgrade-storage:/etc/postgrade
       - postgres-storage:/var/lib/postgresql/data
     ports:
-      - ${ADMIN_PORT:-}:4000
+      - ${ADMIN_PORT:-4000}:4000
     networks:
       - domain
+    extra_hosts:
+      - host.docker.internal:172.17.0.1
+
     depends_on:
       - pg.db.srv
-    restart: on-failure
+    restart: always
     deploy:
       resources:
         limits:
           memory: 512m
           cpus: 0.5
 
+
   # Serviço P2M (PostgreSQL para MongoDB)
   p2m.internal.srv:
+    image: zootakuxy/postgrade-p2m
+    build:
+      context: .
+      dockerfile: p2m/Dockerfile
     container_name: ${SERVICE:-srv-postgrade}-p2m
     hostname: p2m.internal.${DOMAIN:-postgrade.srv}
-    image: zootakuxy/postgrade-p2m
     env_file:
       - ${P2M_ENVFILE:-ignore}
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB:-postgres}
-      MONGO_URI: mongodb://${MONGO_USER:-root}:${MONGO_PASSWORD}@mongo:27017
+      MONGO_HOST: ${MONGO_HOST:-mg.db.srv}
+      MONGO_PORT: ${MONGO_PORT:-27017}
+      MONGO_USER: ${MONGO_USER:-root}
+      MONGO_PASSWORD: ${MONGO_PASSWORD}
     networks:
       - domain
+    extra_hosts:
+      - host.docker.internal:172.17.0.1
+
     depends_on:
       - pg.db.srv
       - mg.db.srv
-    restart: on-failure
+    restart: always
     ports:
-      - ${P2M_PORT:-}:5000
+      - ${P2M_PORT:-5000}:5000
     deploy:
       resources:
         limits:
           memory: 1g
           cpus: 2.0
-
-volumes:
-  postgres-storage:
-    name: ${SERVICE:-srv-postgrade}-postgres-storage
-  mongo-storage:
-    name: ${SERVICE:-srv-postgrade}-mongo-storage
-  postgrade-storage:
-    name: ${SERVICE:-srv-postgrade}-postgrade-storage
-    driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: ${POSTGRADE_VOLUME}
-
-networks:
-  domain:
-    driver: bridge
-    name: ${DOMAIN:-postgrade.srv}

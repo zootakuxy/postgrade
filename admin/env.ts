@@ -1,9 +1,6 @@
 import {EnvAS, EnvParser} from "../libs/utils/env";
 
 export type EnvMode = "dev" | "test" | "prop" | "public";
-
-console.log( process.env )
-
 export class EnvOptions {
     SERVICE:string = "srv-postgrade"
     DOMAIN:string = "postgrade.domain"
@@ -20,7 +17,9 @@ export class EnvOptions {
     POSTGRES_VERSION:  number = 14
     POSTGRES_PORT: number = 5432
 
-    SERVER_PORT: number = 80
+
+
+    SERVER_PORT=4000
     SERVER_PROTOCOL: "http"|"https" = "http"
 
     MAIL_PASSWORD: string

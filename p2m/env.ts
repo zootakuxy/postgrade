@@ -16,8 +16,7 @@ export class EnvOptions {
     POSTGRES_PORT: number = 5432
     POSTGRES_SERVICE: "postgresql.service"
 
-    SERVER_PORT: number = 3000
-    SERVER_INTERNAL: number = 4444
+    SERVER_PORT: number = 5000
     SERVER_PROTOCOL: "http"|"https" = "http"
 
     MAIL_PASSWORD: string
@@ -25,6 +24,11 @@ export class EnvOptions {
     MAIL_NAME: string = null
     MAIL_MAIL: string = null
     MAIL_PORT: number = null
+
+    MONGO_HOST = "mg.db.srv"
+    MONGO_PORT=27017
+    MONGO_USER="root";
+    MONGO_PASSWORD=""
 }
 
 export const definition:{[ K in keyof EnvOptions ]?:EnvParser } = {

@@ -1,16 +1,44 @@
-import {Database, HBA, PgUser} from "kitres/src/core/database/instance";
+import { DatabaseSetup, Grant, HBA} from "kitres/src/core/database/instance";
 import axios from "axios";
 import fs from "fs";
 import Path from "path";
 
 namespace postgrade {
+
+    export type PgUser = {
+        username:string,
+        password:string,
+        schemas?:string[],
+        search?:string[],
+        superuser?:boolean,
+        replication?:boolean,
+        tests?:({
+            database:string
+        })[]
+    }
+
+    export type Database = {
+        sys?:string
+        dbname:string,
+        extensions?:string[],
+        newExtensions?:string[],
+        extensionSchema?:string,
+        schemas?:string[],
+        search?:string[],
+        owner:string,
+        base?:string,
+        grants?:Grant[],
+        setups?:DatabaseSetup[]
+    }
+
     export interface Configs {
+        sys?:string,
         setup:{
             host?:string,
             port?:number,
             app:string,
             volume?:string
-        }
+        },
         database?:Database[]
         users?:PgUser[],
         hba?:HBA[],
@@ -31,6 +59,7 @@ namespace postgrade {
         status?:number,
         message?:string
     }
+
     export function setup( opts:Configs, resolve:( error?:PostgradeError, response?:PostgradeResponse)=>void ){
         let origin = `http://${ opts?.setup?.host||"admin" }:${ opts?.setup?.port || 80 }`;
         let volume = opts?.setup?.volume || "/etc/postgrade/setups";
@@ -62,7 +91,8 @@ namespace postgrade {
             error.status = response.status;
             error.statusText = response.statusText;
             error.data = response.data;
-            if( response.status !== 200 ) return resolve( null, {
+
+            return resolve( null, {
                 result: response.status === 200
                     && !!response.data?.result
                 ,
@@ -80,6 +110,7 @@ namespace postgrade {
             return resolve( error );
         });
     }
+
 }
 
 export = postgrade;

@@ -1,8 +1,8 @@
 
 import cors from "cors";
-import {api} from "../server";
+import {app} from "../server";
 
-api.use( cors({
+app.use( cors({
     origin: (requestOrigin, callback) => {
         callback(null, requestOrigin );
     }

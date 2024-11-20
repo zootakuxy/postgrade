@@ -34,20 +34,46 @@ type EnvOptionsKeys<EV> = keyof EV;
 
 // Transformando as chaves em um tipo que segue a lógica desejada
 export type EnvArgsOptions<EV extends {[K in keyof EV]:EV[K]}> = {
-// @ts-ignore
+    // @ts-ignore
     [K in EnvOptionsKeys as K extends string ? Transform<K> : never]: (keyof EV)[K];
 };
 
 
+export type EnvDefinitions<EV extends { [ K in keyof EV]:EV[K]}> = {[ K in keyof EV ]?:EnvParser };
+export type EnvDocumentations<EV extends { [ K in keyof EV]:EV[K]}> = {[ K in keyof EV ]?:{
+    label? :string,
+    descriptions?: string
+    required?: boolean
+    parse?:EnvParser
+}};
+export type ArgsOptions<EV> = Partial<EnvArgsOptions<EV>>
+export type EnvOptions<EV extends { [ K in keyof EV]:EV[K]}> = Partial<ArgsOptions<EV>>
 
-export function environments<EV>( EVClass, definition, options?:Partial<ArgsOptions<EV>> ){
+
+export function loadEnvs( ...envsFiles:string[]){
+    envsFiles.forEach( filename => {
+        if( !fs.existsSync( filename ) ) return;
+        let envs = ini.parse( fs.readFileSync( filename ).toString() );
+        Object.entries( envs ).forEach( ([key, value]) => {
+            if( !!process.env[key] ) return;
+            process.env[ key ] = value;
+        });
+    });
+}
+
+export type EnvironmentsOptions<EV> = {
+    arguments?:EnvOptions<EV>,
+    dotenvs?:string[]
+}
+export function environments<EV>( EVClass:new (...args: any[]) => EV, definition:EnvDefinitions<EV>, opts?: EnvironmentsOptions<EV> ){
     let failures:Failure<EV>[] = [];
     let defaults = new EVClass();
-
-    options = options || {};
+    if( opts?.dotenvs?.length ) loadEnvs( ...opts.dotenvs );
+    let options = opts.arguments || {};
     let configsFile = options["configs"] as string
         || process.env[ "CONFIGS" ]
-        || defaults.CONFIGS;
+        || defaults[ "CONFIGS" ]
+    ;
 
     let configs:EV = {} as EV;
     if( fs.existsSync( configsFile ) && fs.statSync( configsFile ).isFile() ) {
@@ -55,43 +81,83 @@ export function environments<EV>( EVClass, definition, options?:Partial<ArgsOpti
     }
 
 
-    let use:EV = new EVClass();
+    let use = new EVClass();
 
     Object.entries( defaults ).forEach( ( [ key, value ] ) => {
         let props = key.split( "_" );
-        let val =                         extract( definition, key, props, configsFile,  options, "options" );
+        let val =                    extract( definition, key, props, configsFile,  options, "options" );
         if( !hasValue( key, val ) ) val = extract( definition, key, props, configsFile, process.env, "env" );
         if( !hasValue( key, val ) ) val = extract( definition, key, props, configsFile, configs, "configs" );
         if( !hasValue( key, val ) ) val = extract( definition, key, props, configsFile, defaults, "default" );
         use[ key ] = val;
 
-        if( val instanceof Password) {
-            use[ key ] = val.resolved;
-            if( !val.resolved || val.type === "unresolved" ) failures.push({
+        if( val instanceof Password ) {
+            use[ key ] = val.resolved();
+            if( ( !val.resolved() || val.type === "unresolved" ) && val.is( "required" ) ) failures.push({
                 ENV: key as any,
                 message: `Unresolved env props:${key} with direction: ${ val.direction }`
             })
+        } else if( val instanceof EnvValue ) {
+            use[ key ] = val.resolved();
+            if(( !val.resolved() === null || !val.resolved() === undefined ) && val.is( "required" )){
+
+            }
         }
     });
     return { env: use, failures };
 }
 
 
+type EnvChecks = "required";
 
-class Password {
+class EnvValue<T> {
+
+    private _checks:Set<EnvChecks>
+    private readonly _resolved:T;
+
+    constructor( resolved:T ) {
+        this._resolved = resolved;
+        this._checks = new Set<EnvChecks>();
+    }
+
+    public resolved(){
+        return this._resolved;
+    }
+
+    as( ...checks: EnvChecks[] ){
+        checks.forEach( value => this._checks.add( value ));
+        return this;
+    }
+    no( ...checks: EnvChecks[] ){
+        checks.forEach( value => this._checks.delete( value ));
+        return this;
+    }
+
+    is( ...checks: EnvChecks[]) {
+        return !checks.find( value => !this._checks.has( value ));
+    }
+}
+
+interface PasswordOptions  {
+    type:"unresolved"| "plain" | "raw" | "unknown" | "file" | "url"
+    hint?:string
+    direction:string
+}
+class Password extends EnvValue<string> implements PasswordOptions {
     type:"unresolved"| "plain" | "raw" | "unknown" | "file" | "url"
     direction:string
-    resolved:string
-    constructor( opts?:Partial<Password> ) {
+    constructor( resolved:string, opts?:Partial<PasswordOptions> ) {
+        super( resolved )
         Object.entries( opts||{} ) .forEach( ([key, value]) => {
             this[key] = value
         });
         if( !this.type && !this.direction && !this.resolved ) this.type = "unresolved";
         if( !this.type ) this.type = "unknown";
+        this.as( "required" );
     }
 
-    static instance( opts?:Partial<Password> ){
-        return new Password( opts );
+    static instance( resolved?:string, opts?:Partial<PasswordOptions> ){
+        return new Password( resolved, opts );
     }
 }
 
@@ -109,47 +175,50 @@ export const EnvAS = {
     boolean( s: string ) {
         if( s === undefined || s === null ) return false;
         let num = Boolean( s );
-        return !!num;
+        return new EnvValue( !!num );
     },
     number( s: string ) {
         if( s === undefined || s === null ) return null;
         let num = Number( s );
         if( Number.isNaN( num ) ) return null;
-        return num;
+        return new EnvValue( num );
     },
     password( s: string, origin:Origin, configFile?:string) {
-        if( !s ) return Password.instance();
-        if( typeof s !== "string" ) return Password.instance();
+        if( !s ) return Password.instance(undefined, { hint:"raw value not sets" });
+        if( typeof s !== "string" ) return Password.instance( undefined, { hint:"raw is not a strings" });
 
         let parts = s.split(":");
-        if( parts.length < 2 ) return Password.instance({ resolved: s, type: "raw" });
+        if( parts.length < 2 ) return Password.instance( s, { type: "raw", hint:"Using raw value sets"  });
 
         let type = parts.shift() as Password["type"];
         let direction = parts.join( ":" );
-        if( [ "plain", "raw" ].includes( type ) ) return Password.instance({
+        if( [ "plain", "raw" ].includes( type ) ) return Password.instance( direction, {
             type: type,
-            resolved: direction,
-            direction: "plain"
+            direction: "plain",
+            hint: "Password type is raw or plain"
         });
 
         if( type === "file" ){
             let file = resolveFile( direction, origin, configFile );
-            if(  (!fs.existsSync( file ) || !fs.statSync( file ).isFile())) return Password.instance({
+            if(  (!fs.existsSync( file ) || !fs.statSync( file ).isFile())) return Password.instance( null, {
                 type: type,
-                resolved: null,
-                direction: file
+                direction: file,
+                hint: "Password type file not resolved file! File not exists!"
+
             })
             let resolved = fs.readFileSync( file ).toString();
-            return  Password.instance( {
+            return  Password.instance( resolved, {
                 type: type,
-                resolved: resolved,
+                hint: "Password type is file!",
                 direction: file
             })
         }
     },
     integer( s: string ){
         let num = this.number( s );
-        if( !Number.isSafeInteger( num ) ) return null;
+        if( !num ) return null;
+
+        if( !Number.isSafeInteger( num.resolved() ) ) return null;
         return num;
     }
 }
@@ -189,12 +258,9 @@ const extract = ( definition:any, key:string, props:string[], configsFile:any, s
 
 function hasValue( key:string, val: any) {
     if( val === null || val === undefined ) return false;
-    return !( val instanceof Password && !val.resolved );
-
+    if( val instanceof Password ) return val.resolved();
+    if( val instanceof EnvValue ) return val.resolved();
+    return true;
 }
 
 export type EnvParser = ( value:string, origin:Origin, configFile?:string )=>any
-
-
-
-export type ArgsOptions<EV> = Partial<EnvArgsOptions<EV>>

@@ -19,13 +19,17 @@ export function startServer( opts?:ArgsOptions<EnvOptions> ){
 
     context.define( load.env );
 
-    let routes = Path.join( __dirname, "./routes" );
+    console.table( context.env );
+
+    let routes = Path.join( __dirname, /*language=file-reference*/ "./routes" );
     let filter = new RegExp(`((^)*.${"route.js"})$`);
+    console.log( routes, fs.existsSync( routes ) )
     if( fs.existsSync( routes ) ) {
         fs.readdirSync( routes, { recursive: true,  withFileTypes: true} ).map( file => {
             if( !file.isFile() ) return;
             if( !filter.test( file.name  ) ) return;
-            require( Path.join(routes, file.name )  );
+            console.log( `Loading file route:`, new URL( `file://${Path.join( file.path, file.name ) }`).href )
+            let req = require( Path.join( file.path, file.name )  );
         })
     }
 }

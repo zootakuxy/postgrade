@@ -18,9 +18,6 @@ export function startServer( opts?:ArgsOptions<EnvOptions> ){
     }
 
     context.define( load.env );
-    console.log( context.tag, `NODEJS Envs` );
-    console.table( process.env );
-
     console.log( context.tag, `Current Env SETS` );
     console.table( load.env );
 
@@ -30,7 +27,8 @@ export function startServer( opts?:ArgsOptions<EnvOptions> ){
         fs.readdirSync( routes, { recursive: true,  withFileTypes: true} ).map( file => {
             if( !file.isFile() ) return;
             if( !filter.test( file.name  ) ) return;
-            require( Path.join(routes, file.name )  );
+            console.log( `Loading file route:`, new URL( `file://${Path.join( file.path, file.name ) }`).href )
+            require( Path.join( file.path, file.name )  );
         })
     }
 }

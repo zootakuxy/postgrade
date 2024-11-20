@@ -1,6 +1,6 @@
 #!/bin/bash
 WORKDIR=$(pwd)
-HOME=$(dirname "$0")/..
+POSTGRADE_HOME=$(cd "$(dirname "$(readlink -f "$0")")" && pwd)/..
 
 DEFAULT_PROJECT="postgrade"
 # Exibe a mensagem solicitando a senha e sugere o valor atual, se existente
@@ -24,7 +24,7 @@ echo "Stop docker compose..."
 cd "${HOME}"
 
 # Rodar o comando Docker Compose (substitua pelo seu comando real)
-docker compose -p "${PROJECT}" -f postgrade.yml --env-file "${WORKDIR}/.env.${PROJECT}" down
+docker compose -p "${PROJECT}" -f "${POSTGRADE_HOME}/postgrade.yml" --env-file "${WORKDIR}/.env.${PROJECT}" down
 echo "Docker Compose finished."
 cd "${WORKDIR}"
 

@@ -48,4 +48,4 @@ require( './middlewares/cors' );
 // require( "./middlewares/flocoto" );
 // require( "./middlewares/flocoto-viewport" );
 
-export { api, app, server } from './server';
+export { app, server } from './server';

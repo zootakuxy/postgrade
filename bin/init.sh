@@ -1,5 +1,7 @@
 #!/bin/bash
 
+POSTGRADE_HOME=$(cd "$(dirname "$(readlink -f "$0")")" && pwd)/..
+
 # Função para autocompletar o caminho baseado em pastas disponíveis
 complete_path() {
     local cur="${COMP_WORDS[COMP_CWORD]}"  # Caminho atual digitado

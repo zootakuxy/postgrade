@@ -5,7 +5,7 @@ LABEL name="Postgrade PGAdmin" \
     version="1.0"
 
 # Expor a porta onde a aplicação Express estará rodando
-EXPOSE 80
+EXPOSE 4000
 
 VOLUME [ "/etc/postgrade" ]
 
@@ -24,13 +24,12 @@ RUN mkdir -p  "/etc/postgrade"
 RUN chmod 777 "/etc/postgrade"
 
 # Instalar dependências do PostgreSQL (pg_dump, psql)
-RUN apk update && \
-    apk add --no-cache postgresql-client
+RUN apk update;
+RUN apk add --no-cache postgresql-client
 
 
 # Copiar o package.json e o package-lock.json para instalar as dependências
 COPY admin/package*.json .
-
 # Instalar as dependências do Node.js
 RUN npm install --omit=dev
 
@@ -38,7 +37,10 @@ RUN npm install --omit=dev
 COPY admin admin
 COPY libs libs
 
-
+COPY /version.* .
+COPY VERSION .
+COPY REVISION .
+COPY TAG .
 
 # Iniciar a aplicação Node.js
 CMD [ "node", "admin/server" ]

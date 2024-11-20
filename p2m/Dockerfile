@@ -25,13 +25,17 @@ RUN chmod 777 "/etc/postgrade"
 
 # Copiar o package.json e o package-lock.json para instalar as dependências
 COPY p2m/package*.json .
-
-# Instalar as dependências do Node.js
 RUN npm install --omit=dev
 
 # Copiar o código-fonte da aplicação para dentro do contêiner
 COPY p2m p2m
 COPY libs libs
+
+COPY /version.* .
+COPY VERSION .
+COPY REVISION .
+COPY TAG .
+
 
 
 

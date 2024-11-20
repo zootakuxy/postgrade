@@ -146,6 +146,14 @@ export type PostgresInstanceSetup = {
     actions:( PostgresContextSteep )[]
 }
 
+export type SetupRespond = {
+    result:boolean,
+    message?:string
+    messageError?:string
+    hint?:any
+    setups?:PostgresInstanceSetup
+}
+
 export class PostgresContext extends BaseEventEmitter<PostgresInstanceEvent>{
     public options:PostgresInstanceOptions;
     private _elevator:ElevatorServer<IpcPostgresInstanceEvent>;

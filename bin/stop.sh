@@ -32,7 +32,7 @@ mkdir -p ${POSTGRADE_VOLUME}
 
 
 # Rodar o comando Docker Compose (substitua pelo seu comando real)
-docker compose -p "${PROJECT}" -f "${POSTGRADE_HOME}/postgrade.yml" --env-file "${WORKDIR}/.env.${PROJECT}" up -d
+docker compose -p "${PROJECT}" -f "${POSTGRADE_HOME}/postgrade.yml" --env-file "${WORKDIR}/.env.${PROJECT}" stop
 echo "Docker Compose finished."
 cd "${WORKDIR}"
 

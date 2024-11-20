@@ -24,14 +24,13 @@ RUN echo 'http://dl-cdn.alpinelinux.org/alpine/v3.9/community' >> /etc/apk/repos
 RUN apk update
 
 # Instalar dependências necessárias para a compilação
-RUN apk add --no-cache \
-    build-base \
-    git \
-    curl-dev \
-    curl \
-    postgresql-dev \
-    musl-dev \
-    openrc
+RUN apk add --no-cache build-base
+RUN apk add --no-cache git
+RUN apk add --no-cache curl-dev
+RUN apk add --no-cache curl
+RUN apk add --no-cache postgresql-dev
+RUN apk add --no-cache musl-dev
+RUN apk add --no-cache openrc
 
 # Clonar o repositório da extensão pgsql-http
 RUN git clone --branch master https://github.com/pramsey/pgsql-http.git /pgsql-http

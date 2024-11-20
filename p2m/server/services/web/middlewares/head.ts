@@ -1,19 +1,19 @@
-import {VERSION} from "../../../context/version";
-import {api} from "../server";
+import {app} from "../server";
+import {VERSION} from "../../../../../version";
 
 
-api.get([ "/VERSION", "/VER", "/ver", "/version" ], (req, res, next) => {
+app.get([ "/VERSION", "/VER", "/ver", "/version" ], (req, res, next) => {
     res.send( VERSION.NUMBER );
 });
 
-api.get( ["/TAG", "/tag"], (req, res, next) => {
+app.get( ["/TAG", "/tag"], (req, res, next) => {
     res.send( VERSION.TAG );
 });
 
-api.get( ["/VERSION-NAME", "/VER-NAME", "/version-name", "/ver-name"], (req, res, next) => {
+app.get( ["/VERSION-NAME", "/VER-NAME", "/version-name", "/ver-name"], (req, res, next) => {
     res.send( VERSION.VERSION_CODE );
 });
 
-api.get( [ "/REVISION", "/REV", "/REVS", "/revision", "/rev", "/revs" ], (req, res, next) => {
+app.get( [ "/REVISION", "/REV", "/REVS", "/revision", "/rev", "/revs" ], (req, res, next) => {
     res.send( VERSION.REVISION );
 });

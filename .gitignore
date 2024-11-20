@@ -143,3 +143,5 @@ dist
 /TAG
 /database/cataloger/flocoto.ts
 /libs/flocoto.integration/catalog/oids.json
+/.env.dev
+/AppsData/

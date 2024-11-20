@@ -1,0 +1,42 @@
+# Created by .ignore support plugin (hsz.mobi)
+# .idea
+# package-lock.json
+# node_modules/
+# readme/
+# src/teste/
+# src/var/
+# var/
+# export.d.ts
+# export.d.ts.map
+# export.js
+# export.js.map
+# yarn.lock
+# yarn-error.log
+
+
+
+
+# Ignorar tudo
+*
+
+# Remover arquivos ignorados
+!package.json
+!README.md
+!tsconfig.json
+!postgrade.yml
+!prod.postgrade.yml
+!.ignore
+!ignore
+!.env
+
+!libs/postgrade/**/*.json
+!libs/postgrade/**/*.js
+!libs/postgrade/**/*.js.map
+!libs/postgrade/**/*.d.ts
+!libs/postgrade/**/*.ts
+!libs/postgrade/**/*.js
+!bin/**
+!docs/**
+
+
+

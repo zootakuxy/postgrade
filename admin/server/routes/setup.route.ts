@@ -1,37 +1,49 @@
 import {context} from "../context/index";
 import Path from "path";
 import fs from "fs";
-import {api} from "../services/web";
-import {Configs} from "../../../libs/postgrade/src";
-import {InstallationLocation, PostgresContext, PostgresInstanceOptions, sql} from "kitres";
+import {app} from "../services/web";
+import {Configs} from "../../../libs/postgrade";
+import {
+    InstallationLocation,
+    PgCore,
+    PostgresContext,
+    PostgresInstanceOptions,
+    RevisionCore,
+    scriptUtil,
+    sql
+} from "kitres";
 import {execSync} from "node:child_process";
 import dao from "../services/database/pg/index";
+import { SetupRespond} from "../../../libs/pg/instance";
+import {Pool} from "pg";
+import chalk from "chalk";
+import {VERSION} from "../../../version";
 
-const psql = execSync("which psql").toString().trim();
+const psql = execSync( "which psql" ).toString().trim();
 
-api.post( "/api/admin/setup/:setup", (req, res ) => {
+app.post( "/api/admin/setup/:setup", (req, res ) => {
     let configsFile = Path.join( context.env.SETUP, req.params.setup, "setup.json" );
-    let respond = ( respose )=>{
-        console.log( context.tag, `Response for setup`, req.path, respose );
-        res.json( respose );
+    let respond = ( error:Error, message:string, hint?:any, response?:SetupRespond )=>{
+        if( !response?.result && !error ) console.log( context.tag, `Response for setup`, req.path, response );
+        if( !response ){
+            response = {
+                result: false,
+                messageError: error?.message,
+                message: message || "Database setup error",
+                hint: hint,
+            }
+        }
+        res.json( response );
         return;
     }
     if( !fs.existsSync( configsFile ) ){
-        respond({
-            result: false,
-            message: `Setup configs not exists!`,
-            configsFile
-        });
+        respond( new Error( `Setup configs not exists!` ), `Setup configs not exists!`, configsFile );
         return;
     }
 
     let configs:Configs;
     try { configs = JSON.parse( fs.readFileSync( configsFile ).toString() ); }catch (e){
-        respond({
-            result: false,
-            message: "Invalid setup configs file"
-        })
-        return;
+        return respond( new Error( "Invalid setup configs file" ),"Invalid setup configs file")
     }
 
     configs.database.forEach( database =>  {
@@ -76,44 +88,39 @@ api.post( "/api/admin/setup/:setup", (req, res ) => {
         }
     };
 
-    let setup = new PostgresContext( setupOption )
+    let setup = ( returns:( error?:Error, respond? :SetupRespond)=>void )=>{
+        let sets = new PostgresContext( setupOption )
+        sets.on( "log", (level, message) => {
+            console.log( `database setup log ${level} > ${ message.trim() }`);
+        });
+        sets.on("message", (message, action) => {
+            console.log( `database setup message > ${ message.trim() }` );
+        });
 
-    setup.on( "log", (level, message) => {
-        console.log( `database setup log ${level} > ${ message.trim() }`);
-    });
-    setup.on("message", (message, action) => {
-        console.log( `database setup message > ${ message.trim() }` );
-    });
+        sets.on( "setup",(error, result) => {
+            if( error ) return console.log( `Database preparation Error | ${ error.message }` );
+            else if( !result.status) return console.log( "Database preparation failed!" )
+            else return  console.log( `${ context.tag } database setup > Database prepared successfully!` )
+        });
 
-    setup.on( "setup",(error, result) => {
-        if( error ) return console.log( `Database preparation Error | ${ error.message }` );
-        else if( !result.status) return console.log( "Database preparation failed!" )
-        else return  console.log( `${ context.tag } database setup > Database prepared successfully!` )
-    });
+        sets.on("flowResolved", (flow, preview) => {
+            console.log( `${ context.tag } database setup flow resolved > Resolved database preparation flow ${ flow.identifier } in steep ${ flow.steep } out with ${ flow.out } | ${ flow?.response?.message } `);
+            if( flow.error ){
+                console.error( context.tag, flow.error );
+            }
+        });
 
-    setup.on("flowResolved", (flow, preview) => {
-        console.log( `${ context.tag } database setup flow resolved > Resolved database preparation flow ${ flow.identifier } in steep ${ flow.steep } out with ${ flow.out } | ${ flow?.response?.message } `);
-        if( flow.error ){
-            console.error( context.tag, flow.error );
-        }
-    });
+        sets.on( "flowSkip", (steep, flow) => {
+            console.log( `${ context.tag } database setup flow skipped> Skipped database preparation flow ${ flow.identifier } in steep ${ steep }`)
+        });
 
-    setup.on( "flowSkip", (steep, flow) => {
-        console.log( `${ context.tag } database setup flow skipped> Skipped database preparation flow ${ flow.identifier } in steep ${ steep }`)
-    });
 
-    let handler = ()=>{
-        setup.setup( ( error, result) => {
+        sets.setup( ( error, result) => {
             if( error ) {
                 console.error( context.tag, `Error ao efetuar o setup da base de dados!`, error );
-                return res.json( {
-                    result: false,
-                    message: `Error ao efetuar o setup da base de dados`,
-                    hint: error.message,
-                    setups: result
-                })
+                return respond( error,  `Error ao efetuar o setup da base de dados` );
             }
-            return respond({
+            return returns( error, {
                 result: result?.status,
                 message: `Error ao efetuar o setup da base de dados`,
                 setups: result
@@ -121,19 +128,81 @@ api.post( "/api/admin/setup/:setup", (req, res ) => {
         });
     }
 
-    hba( configs );
-    dao.core.query( sql`
-      select * from pg_reload_conf()
-    `, (error, result) => {
-        if( error ){
-            console.error( context.tag, `Error reloading configs`, error );
-            return respond({
-                result: false,
-                message: "Reload configs failed!",
+    let revision = ( returns:( error?:Error )=>void )=>{
+        let promises = configs.database.map( database => {
+            let owner =  configs.users.find( user => database.owner === user.username );
+            if( !owner ) return;
+
+            return new Promise<{error?:Error}>(( resolve )=>{
+                let core = new PgCore( () => new Pool( {
+                    user: owner.username,
+                    database: database.dbname,
+                    password: owner.password,
+                    host: context.env.POSTGRES_HOST,
+                    port: context.env.POSTGRES_PORT
+                }), { schema: "postgrade" });
+
+                const revision = new RevisionCore( connection => {
+                    return core
+                });
+                listener( revision, core );
+                let collection = revision.collect();
+                if( collection.error ){
+                    console.log( context.tag, `Error ao collectar revisões!` );
+                    return resolve({ error: collection.error })
+                }
+
+                revision.setup( (error, block) => {
+                    if( error ){
+                        console.log( context.tag, `Error ao aplicar a revisão ininical!`, error );
+                        return resolve({ error });
+                    }
+                    resolve( { error:null })
+                });
             });
-        }
-        handler();
-    });
+        }).filter( value => !!value );
+
+        Promise.all( promises ).then( value =>  {
+            let error = value.find( value1 => value1.error );
+            if( error ) return returns( error.error );
+            return  returns( null )
+        }).catch( reason => {
+            returns( reason );
+        });
+
+    }
+
+    let reload=( returns:(error?:Error)=>void )=>{
+        dao.core.query( sql`
+          select * from pg_reload_conf()
+        `, (error, result) => {
+            if( error ){
+                console.error( context.tag, `Error reloading configs`, error );
+                return returns( error );
+            }
+            returns( error );
+        });
+    }
+
+    hba( configs );
+    reload( error => {
+        if( error ) return respond( error, 'Falha ao recarregar as configurações base do db' );
+        setup( ( error, returns) => {
+            if( error ) respond( error, 'Error ao efetuar os setups base do banco!');
+            revision( error => {
+                if( error ) respond( error, 'Error ao aplicar as revisões inicial da base de dados!' );
+                return respond( null, 'Success', null, {
+                    result: true,
+                    message: "Success",
+                    setups: returns.setups
+                })
+            })
+        })
+    })
+
+
+
+
 })
 
 
@@ -206,3 +275,46 @@ function hba( opts:Configs ){
 
     update( "pg_hba.conf", raw, lines );
 }
+
+
+function listener ( rev:RevisionCore<any>, core:PgCore){
+    rev.setsOptions({
+        dirname: Path.join( __dirname, /*language=file-reference*/ `../../database/revs` ),
+        schema: core.schema,
+        VERSION: VERSION,
+        resolvedDirectory: Path.join( __dirname, /*language=file-reference*/ `../../database/revs/resolved` ),
+        history: false,
+        props: {
+            DATA_VERSION: VERSION.TAG
+        }
+    })
+
+    rev.on("log", (level, message) => {
+        // console.log( message );
+    });
+
+    rev.on("collectError", error =>{
+        console.error( context.tag, error );
+    });
+
+    rev.on( "register", block => {
+        // console.log( block )
+        let filename = scriptUtil.typescriptOf( block.filename ) || block.filename;
+        let lineNumber = block.line?.line as any;
+        if( lineNumber ) lineNumber = `:${ lineNumber }`;
+        console.log( `collecting database patch ${ new URL(`file:\\\\${ filename }${lineNumber}`).href } identifier = "${ block.identifier }"` );
+    });
+
+    rev.on( "applierNotice", notice => {
+        let filename = scriptUtil.typescriptOf( notice.filename )||notice.filename;
+        let lineNumber = notice.line?.line as any;
+        if( lineNumber ) lineNumber = `:${ lineNumber }`;
+        else lineNumber = ':1';
+        let status = chalk.blueBright.bold( notice.status );
+        if( notice.status === "ERROR" ) status = chalk.redBright.bold( notice.status );
+        if( notice.status === "FINALIZED" ) status = chalk.green.bold( notice.status );
+        console.log( `apply database path ${ new URL( `file:\\\\${ filename }${ lineNumber }` ).href } identifier = "${ notice.identifier }" ${ status }`);
+    });
+}
+
+console.log( "Loaded route file", __filename );

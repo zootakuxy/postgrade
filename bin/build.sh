@@ -1,8 +1,10 @@
 #!/bin/bash
 
+POSTGRADE_HOME=$(cd "$(dirname "$(readlink -f "$0")")" && pwd)/..
 # Muda para o diretório pai do diretório onde o script está localizado
 cd $(dirname "$0")/..
 
-docker build -t zootakuxy/postgrade-admin   -f admin/Dockerfile .
-docker build -t zootakuxy/postgrade-p2m     -f p2m/Dockerfile .
-docker build -t zootakuxy/postgrade-pg      -f pg/Dockerfile .
+# shellcheck disable=SC2216
+tsc | echo "build"
+node version.js
+docker compose build
