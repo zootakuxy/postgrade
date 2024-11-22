@@ -116,6 +116,46 @@ async function updates( db:string, collection:string,  filter:any, sets:any, opt
     return response;
 }
 
+async function upsert( db:string, collection:string,  refs:any, sets:any, opts:any ){
+    let returning = !!opts?.returning;
+    await mg.client.connect();
+    const database = mg.client.db( db );
+    const col = database.collection( collection );
+
+    if( !refs ) refs = {};
+    if( !sets ) sets = {};
+    if( !opts ) opts = {};
+
+    let response:{
+        method?:"insertMany"|"insertOne",
+        result?:boolean,
+        returns?:any[],
+    };
+
+    let returns = null;
+    if( returning ){
+        let ids = (await col.find( refs, opts ).toArray()).map( value => value._id );
+        await col.updateOne(
+            { _id:{ $in: ids }},
+            sets,
+            { upsert: true }
+        );
+        returns = await col.find( { _id:{ $in: ids }}, opts ).toArray()
+    } else {
+        await col.updateOne(
+            refs,
+            sets,
+            { upsert: true }
+        )
+    }
+    response = {
+        result: true,
+        method: "insertOne",
+        returns: returns,
+    }
+    return response;
+}
+
 async function deletes( db:string, collection:string,  filter:any, opts:any ){
 
     let returning = !!opts?.returning;
@@ -195,6 +235,21 @@ app.post( "/:db/:collection/updates", (req, res, next) => {
 
 app.post( "/:db/:collection/deletes", (req, res, next) => {
     let filter = req.body.filter;
+    let opts = req.body.opts;
+    deletes( req.params.db, req.params.collection, filter, opts ).then( value => {
+        res.json(value)
+    }).catch( reason => {
+        console.error( context.tag, `Error ao remover documento no mongoDB`, reason );
+        res.status( 500 ).json({
+            message:`Internal server error!`,
+            hint: reason?.message
+        })
+    });
+});
+
+app.post( "/:db/:collection/upsert", (req, res, next) => {
+    let filter = req.body.refs;
+    let sets = req.body.sets;
     let opts = req.body.opts;
     deletes( req.params.db, req.params.collection, filter, opts ).then( value => {
         res.json(value)

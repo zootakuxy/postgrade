@@ -84,8 +84,9 @@ $$;
 `
 
 export const mongo_inserts = sql`
+drop function if exists public.mongo_inserts(collection character varying, item jsonb, items jsonb[] );
 drop function if exists public.mongo_inserts;
-create or replace function public.mongo_inserts( collection character varying, items jsonb[], "returning" boolean default false, opts jsonb default null)
+create or replace function public.mongo_inserts( collection character varying, item jsonb, variadic items jsonb[] default '{}'::jsonb[] )
 returns table (
   id text,
   object jsonb
@@ -95,10 +96,10 @@ declare
 begin
   return query
     select *
-      from public.mongo( collection, '/inserts', jsonb_build_object(
-        'items', items,
-        'opts', coalesce( opts, jsonb_build_object()) || jsonb_build_object(
-          'returning', coalesce( "returning", (opts->>'returning')::boolean, false )
+      from public.mongo( $1, '/inserts', jsonb_build_object(
+        'items', array[items] || items,
+        'opts', coalesce( jsonb_build_object()) || jsonb_build_object(
+          'returning', true
         )
       )
   );
@@ -108,7 +109,7 @@ $$;
 
 export const mongo_updates = sql`
 drop function if exists public.mongo_updates;
-create or replace function public.mongo_updates( collection character varying, filter jsonb, sets jsonb, "returning" boolean default false, opts jsonb default null)
+create or replace function public.mongo_updates( collection character varying, filter jsonb, sets jsonb, "returning" boolean default true, opts jsonb default null)
 returns table (
   id text,
   object jsonb
@@ -122,7 +123,31 @@ begin
         'sets', sets,
         'filter', filter,
         'opts', coalesce( opts, jsonb_build_object()) || jsonb_build_object(
-          'returning', coalesce( "returning", (opts->>'returning')::boolean, false )
+          'returning', coalesce( "returning", (opts->>'returning')::boolean, true )
+        )
+       )
+  );
+end;
+$$;
+`;
+
+export const mongo_upsert = sql`
+drop function if exists public.mongo_updates;
+create or replace function public.mongo_upsert( collection character varying, refs jsonb, sets jsonb, "returning" boolean default true, opts jsonb default null)
+returns table (
+  id text,
+  object jsonb
+)
+language plpgsql as $$
+declare
+begin
+  return query
+    select *
+      from public.mongo( collection, '/upsert', jsonb_build_object(
+        'sets', sets,
+        'refs', refs,
+        'opts', coalesce( opts, jsonb_build_object()) || jsonb_build_object(
+          'returning', coalesce( "returning", (opts->>'returning')::boolean, true )
         )
        )
   );
@@ -132,7 +157,7 @@ $$;
 
 export const mongo_deletes = sql`
 drop function if exists public.mongo_deletes;
-create or replace function public.mongo_deletes( collection character varying, filter jsonb, "returning" boolean default false, opts jsonb default null)
+create or replace function public.mongo_deletes( collection character varying, filter jsonb, "returning" boolean default true, opts jsonb default null)
 returns table (
   id text,
   object jsonb
@@ -145,7 +170,7 @@ begin
       from public.mongo( collection, '/deletes', jsonb_build_object(
         'filter', filter,
         'opts', coalesce( opts, jsonb_build_object()) || jsonb_build_object(
-          'returning', coalesce( "returning", (opts->>'returning')::boolean, false )
+          'returning', coalesce( "returning", (opts->>'returning')::boolean, true )
         )
        )
     );

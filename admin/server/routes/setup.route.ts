@@ -2,7 +2,7 @@ import {context} from "../context/index";
 import Path from "path";
 import fs from "fs";
 import {app} from "../services/web";
-import {Configs} from "../../../libs/postgrade";
+import postgrade, {Configs} from "../../../libs/postgrade";
 import {
     InstallationLocation,
     PgCore,
@@ -22,7 +22,8 @@ import {VERSION} from "../../../version";
 const psql = execSync( "which psql" ).toString().trim();
 
 app.post( "/api/admin/setup/:setup", (req, res ) => {
-    let configsFile = Path.join( context.env.SETUP, req.params.setup, "setup.json" );
+    let destination = Path.join( context.env.SETUP, req.params.setup );
+    let configsFile = Path.join( destination, "setup.json" );
     let respond = ( error:Error, message:string, hint?:any, response?:SetupRespond )=>{
         if( !response?.result && !error ) console.log( context.tag, `Response for setup`, req.path, response );
         if( !response ){
@@ -48,7 +49,9 @@ app.post( "/api/admin/setup/:setup", (req, res ) => {
 
     configs.database.forEach( database =>  {
         if( !database.extensions.includes( "http" ) ) database.extensions.push( "http" );
-        database.setups.forEach( setup => {
+        database.base = Path.join( destination, database.base );
+        database.setups.forEach( (setup) => {
+            setup.filename = Path.join( destination, setup.filename );
         });
     });
 
@@ -60,6 +63,7 @@ app.post( "/api/admin/setup/:setup", (req, res ) => {
         user.tests.forEach( test => {
         });
     });
+
 
     let setupOption:PostgresInstanceOptions = {
         configs:{
@@ -188,7 +192,9 @@ app.post( "/api/admin/setup/:setup", (req, res ) => {
     reload( error => {
         if( error ) return respond( error, 'Falha ao recarregar as configurações base do db' );
         setup( ( error, returns) => {
-            if( error ) respond( error, 'Error ao efetuar os setups base do banco!');
+            if( error ) return respond( error, 'Error ao efetuar os setups base do banco!');
+            if( !returns.result ) return respond( null, 'Falha ao efetuar os setups base do banco!', returns.hint )
+
             revision( error => {
                 if( error ) respond( error, 'Error ao aplicar as revisões inicial da base de dados!' );
                 return respond( null, 'Success', null, {
