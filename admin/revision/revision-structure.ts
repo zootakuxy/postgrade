@@ -1,4 +1,4 @@
-import {SQL, sql} from "../pg-core";
+import {sql, SQL} from "kitres";
 
 export interface BaseStructureSqlOptions {
     schema:string,
@@ -142,7 +142,7 @@ begin
   return next to_jsonb( _current_version );
   
   return query
-   with  __script_rank as (
+    with  __script_rank as (
       select 
           s.*,
           rank() over ( partition by s.script_patch_id order by coalesce( s.script_apply, s.script_date ) desc, s.script_id desc ) as _script_rank 
@@ -152,7 +152,6 @@ begin
         from __script_rank 
         where _script_rank = 1
     ), __script as (
-
       select
           e.doc->>'patch_identifier' as patch_identifier,
           ${ SQL.identifier( opts.schema ) }.posix( e.doc->>'patch_source' ) as patch_source,
@@ -162,15 +161,15 @@ begin
         from jsonb_array_elements( patches ) e  (doc )
     ), __patch_apply as (
       select _s.*,
-             (p.patch_id is not null and s.script_id is not null and p.patch_unique ) or (
-               p.patch_id is not null and s.script_id is not null
-                 and s.script_sql = _s.script_sql
-                 and (( _s.script_force is null and s.script_id is not null ) or _s.script_force = any ( s.script_forcecode ) )
-              ) as exists
-          from __script _s
-            left join ${ SQL.identifier( opts.schema ) }.patch p on _s.patch_identifier = p.patch_identifier
-              and ${ SQL.identifier( opts.schema ) }.posix( _s.patch_source ) = ${ SQL.identifier( opts.schema ) }.posix( p.patch_source )  
-            left join __current_script s on p.patch_id = s.script_patch_id
+          (p.patch_id is not null and s.script_id is not null and p.patch_unique ) or (
+            p.patch_id is not null and s.script_id is not null
+              and s.script_sql = _s.script_sql
+              and (( _s.script_force is null and s.script_id is not null ) or _s.script_force = any ( s.script_forcecode ) )
+          ) as exists
+        from __script _s
+          left join ${ SQL.identifier( opts.schema ) }.patch p on _s.patch_identifier = p.patch_identifier
+            and ${ SQL.identifier( opts.schema ) }.posix( _s.patch_source ) = ${ SQL.identifier( opts.schema ) }.posix( p.patch_source )  
+          left join __current_script s on p.patch_id = s.script_patch_id
     ), __filter as (
       select
           _pa.patch_identifier,
