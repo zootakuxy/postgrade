@@ -1,6 +1,11 @@
+version: '3.9'
+x-app-base: &app-base
+  image: ""
+
+
 services:
   # Serviço do PostgreSQL
-  pg.db.srv:
+  pg.db.srv: &dfdfd
     ports:
       - "${POSTGRES_PORT:-}:5432"
 
