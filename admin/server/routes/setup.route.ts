@@ -21,8 +21,12 @@ import {VERSION} from "../../../version";
 
 const psql = execSync( "which psql" ).toString().trim();
 
-app.post( "/api/admin/setup/:setup", (req, res ) => {
-    let destination = Path.join( context.env.SETUP, req.params.setup );
+fs.mkdirSync( Path.join( context.env.SETUP, "setups" ), { recursive: true } );
+// fs.chmodSync( Path.join( context.env.SETUP, "setups" ), "777")
+
+app.post( "/api/admin/setup/:app", (req, res ) => {
+    let destination = Path.join( context.env.SETUP, "setups", req.params.app );
+    // /etc/postgrade/helpdesk/setup.json
     let configsFile = Path.join( destination, "setup.json" );
     let respond = ( error:Error, message:string, hint?:any, response?:SetupRespond )=>{
         if( !response?.result && !error ) console.log( context.tag, `Response for setup`, req.path, response );
@@ -287,7 +291,7 @@ function listener ( rev:RevisionCore<any>, core:PgCore){
     rev.setsOptions({
         dirname: Path.join( __dirname, /*language=file-reference*/ `../../database/revs` ),
         schema: core.schema,
-        VERSION: VERSION,
+        VERSION: VERSION as any,
         resolvedDirectory: Path.join( __dirname, /*language=file-reference*/ `../../database/revs/resolved` ),
         history: false,
         props: {

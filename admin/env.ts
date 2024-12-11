@@ -7,7 +7,7 @@ export class EnvOptions {
     NAME: string =  "POSTGRADE:ADMIN"
     MODE: EnvMode = "dev"
     CONFIGS: string = "/etc/postgrade/main.conf"
-    SETUP: string = "/etc/postgrade/setups"
+    SETUP: string = "/etc/postgrade"
 
     POSTGRES_NAME: string = "postgres"
     POSTGRES_SUPERUSER: string = "postgres"
