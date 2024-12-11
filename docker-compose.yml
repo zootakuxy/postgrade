@@ -18,7 +18,7 @@ services:
   pg.db.srv:
     image: zootakuxy/postgrade-pg
     build:
-      context: .
+      context: ${POSTGRADE_CONTEXT:-./}
       dockerfile: pg/Dockerfile
     container_name: ${SERVICE:-srv-postgrade}-postgres
     hostname: pg.db.${DOMAIN:-postgrade.srv}
@@ -71,7 +71,7 @@ services:
   admin.internal.srv:
     image: zootakuxy/postgrade-admin
     build:
-      context: .
+      context: ${POSTGRADE_CONTEXT:-./}
       dockerfile: admin/Dockerfile
     container_name: ${SERVICE:-srv-postgrade}-admin
     hostname: admin.internal.${DOMAIN:-postgrade.net}
@@ -103,7 +103,7 @@ services:
   p2m.internal.srv:
     image: zootakuxy/postgrade-p2m
     build:
-      context: .
+      context: ${POSTGRADE_CONTEXT:-./}
       dockerfile: p2m/Dockerfile
     container_name: ${SERVICE:-srv-postgrade}-p2m
     hostname: p2m.internal.${DOMAIN:-postgrade.srv}
