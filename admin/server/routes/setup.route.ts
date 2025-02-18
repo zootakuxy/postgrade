@@ -2,7 +2,7 @@ import {context} from "../context/index";
 import Path from "path";
 import fs from "fs";
 import {app} from "../services/web";
-import postgrade, {Configs} from "../../../libs/postgrade";
+import {Configs, Notified, SetupReturns} from "../../../libs/postgrade";
 import {
     InstallationLocation,
     PgCore,
@@ -14,7 +14,6 @@ import {
 } from "kitres";
 import {execSync} from "node:child_process";
 import dao from "../services/database/pg/index";
-import { SetupRespond} from "../../../libs/pg/instance";
 import {Pool} from "pg";
 import chalk from "chalk";
 import {VERSION} from "../../../version";
@@ -28,7 +27,10 @@ app.post( "/api/admin/setup/:app", (req, res ) => {
     let destination = Path.join( context.env.SETUP, "setups", req.params.app );
     // /etc/postgrade/helpdesk/setup.json
     let configsFile = Path.join( destination, "setup.json" );
-    let respond = ( error:Error, message:string, hint?:any, response?:SetupRespond )=>{
+
+    let notified:Notified[] = [];
+
+    let respond = ( error:Error, message:string, hint?:any, response?:SetupReturns )=>{
         if( !response?.result && !error ) console.log( context.tag, `Response for setup`, req.path, response );
         if( !response ){
             response = {
@@ -38,7 +40,10 @@ app.post( "/api/admin/setup/:app", (req, res ) => {
                 hint: hint,
             }
         }
-        res.json( response );
+        res.json({
+            ...response,
+            notified: notified
+        });
         return;
     }
     if( !fs.existsSync( configsFile ) ){
@@ -96,30 +101,40 @@ app.post( "/api/admin/setup/:app", (req, res ) => {
         }
     };
 
-    let setup = ( returns:( error?:Error, respond? :SetupRespond)=>void )=>{
+
+    let setup = ( returns:( error?:Error, respond? :SetupReturns)=>void )=>{
         let sets = new PostgresContext( setupOption )
         sets.on( "log", (level, message) => {
             console.log( `database setup log ${level} > ${ message.trim() }`);
+            notified.push( { event: "log", text: message, args:{ level }});
         });
         sets.on("message", (message, action) => {
             console.log( `database setup message > ${ message.trim() }` );
+            notified.push( { event: "message", text: message, args:{ action }});
         });
 
         sets.on( "setup",(error, result) => {
-            if( error ) return console.log( `Database preparation Error | ${ error.message }` );
-            else if( !result.status) return console.log( "Database preparation failed!" )
-            else return  console.log( `${ context.tag } database setup > Database prepared successfully!` )
+            let message:string;
+            if( error ) message = ( `Database preparation Error | ${ error.message }` );
+            else if( !result.status) message = ( "Database preparation failed!" )
+            else  message =( `Database setup > Database prepared successfully!` )
+            notified.push( { event: "setup", text: message, args:{ result }});
+            return console.log( context.tag, message );
         });
 
-        sets.on("flowResolved", (flow, preview) => {
-            console.log( `${ context.tag } database setup flow resolved > Resolved database preparation flow ${ flow.identifier } in steep ${ flow.steep } out with ${ flow.out } | ${ flow?.response?.message } `);
+        sets.on( "flowResolved", (flow, preview) => {
+            let message = `Database setup flow resolved > Resolved database preparation flow ${ flow.identifier } in steep ${ flow.steep } out with ${ flow.out } | ${ flow?.response?.message }`;
+            notified.push( { event: "flowResolved", text: message, args:{ flow: flow.identifier, preview: preview?.identifier }});
+            console.log( context.tag, message );
             if( flow.error ){
                 console.error( context.tag, flow.error );
             }
         });
 
         sets.on( "flowSkip", (steep, flow) => {
-            console.log( `${ context.tag } database setup flow skipped> Skipped database preparation flow ${ flow.identifier } in steep ${ steep }`)
+            let message = `Database setup flow skipped> Skipped database preparation flow ${ flow.identifier } in steep ${ steep }`;
+            notified.push( { event: "flowResolved", text: message, args:{ flow: flow.identifier, steep: steep }});
+            console.log( context.tag, message );
         });
 
 
@@ -131,7 +146,8 @@ app.post( "/api/admin/setup/:app", (req, res ) => {
             return returns( error, {
                 result: result?.status,
                 message: `Error ao efetuar o setup da base de dados`,
-                setups: result
+                setups: result,
+                notified: notified
             })
         });
     }
@@ -204,7 +220,7 @@ app.post( "/api/admin/setup/:app", (req, res ) => {
                 return respond( null, 'Success', null, {
                     result: true,
                     message: "Success",
-                    setups: returns.setups
+                    setups: returns.setups,
                 })
             })
         })

@@ -1,6 +1,6 @@
 {
   "name": "postgrade",
-  "version": "1.0.16",
+  "version": "1.0.21-1",
   "main": "libs/postgrade/index.js",
   "scripts": {
     "lin:tsc -w": "tsc -w",
@@ -25,14 +25,11 @@
     "@types/source-map-support": "^0.5.10",
     "ajv": "^8.17.1",
     "axios": "^1.7.7",
-    "kitres": "^1.1.1",
+    "kitres": "^1.1.10",
     "mongodb": "^6.10.0",
     "source-map-support": "^0.5.21",
+    "ts-json-schema-generator": "^2.3.0",
     "typescript": "^5.6.3",
-    "typescript-json-schema": "^0.65.1",
-    "ts-json-schema-generator": "^2.3.0"
-  },
-  "dependencies": {
-
+    "typescript-json-schema": "^0.65.1"
   }
 }

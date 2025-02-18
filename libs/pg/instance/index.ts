@@ -10,28 +10,9 @@ import {BaseEventEmitter, Flow, LogLevel, PgCore, SteepFlow, WorkFlow, WorkFlowE
 import {PgInstallation} from "../pg-register";
 import { OIDResourceManager } from "kitres/src/core/database/resource";
 import {System} from "kitres/src/core/system";
+import {PostgresContextSteep, PostgresInstanceSetup} from "../../postgrade/index";
 
 
-export enum PostgresContextSteep {
-    FLOW_START = "PostgresContextSteep.FLOW_START",
-    SETUP = "PostgresContextSteep.SETUP",
-    FLOW_CHECK_PRE= "PostgresContextSteep.FLOW_CHECK_PRE",
-    FLOW_CHECK_VERBOSE = "PostgresContextSteep.FLOW_CHECK_VERBOSE",
-    CTL_INIT = "PostgresContextSteep.CTL_INIT",
-    SRV_DROP = "PostgresContextSteep.SRV_DROP",
-    SRV_CREATE = "PostgresContextSteep.SRV_CREATE",
-    CONF_FILE = "PostgresContextSteep.CONF_FILE",
-    SRV_RESTART = "PostgresContextSteep.SRV_RESTART",
-    DB_USER_CREATE = "PostgresContextSteep.DB_USER_CREATE",
-    DB_DATABASE_CREATE = "PostgresContextSteep.DB_DATABASE_CREATE",
-    DB_DATABASE_EXTENSIONS = "PostgresContextSteep.DB_DATABASE_EXTENSIONS",
-    DB_DATABASE_IMPORT = "PostgresContextSteep.DB_DATABASE_IMPORT",
-    DB_USER_CONFIGS = "PostgresContextSteep.DB_USER_CONFIGS",
-    DB_DATABASE_CONFIG = "PostgresContextSteep.DB_DATABASE_CONFIG",
-    DB_DATABASE_SETUP = "PostgresContextSteep.DB_DATABASE_SETUP",
-    SRV_START = "PostgresContextSteep.SRV_START",
-    FLOW_END = "PostgresContextSteep.FLOW_END",
-}
 export const FlowSteeps = Object.values( PostgresContextSteep );
 
 export type PgUser = {
@@ -141,18 +122,10 @@ export interface DBFlowResponse extends AnyObject {
     message:string
 }
 
-export type PostgresInstanceSetup = {
-    status?:boolean,
-    actions:( PostgresContextSteep )[]
-}
 
-export type SetupRespond = {
-    result:boolean,
-    message?:string
-    messageError?:string
-    hint?:any
-    setups?:PostgresInstanceSetup
-}
+
+
+
 
 export class PostgresContext extends BaseEventEmitter<PostgresInstanceEvent>{
     public options:PostgresInstanceOptions;

@@ -1,10 +1,13 @@
-import {Grant, HBA, HBAOptions} from "kitres/src/core/database/instance";
 import axios from "axios";
 import fs from "fs";
 import Path from "path";
-import {PGAuthMethod} from "kitres/src/core/database/pg-server";
 
 namespace postgrade {
+
+    export type PGAuthMethod = "trust"|"rejected"|"md5"|"password"|"reject"|"scram-sha-256"|"gss"|"sspi"|"ident"|"peer"|"pam"|"ldap"|"radius"|"cert";
+
+    export type HBAOptions = {}
+
 
     export type PgUser = {
         username:string,
@@ -30,6 +33,28 @@ namespace postgrade {
         expression:string,
         user:string
         object:string
+    }
+
+
+    export enum PostgresContextSteep {
+        FLOW_START = "PostgresContextSteep.FLOW_START",
+        SETUP = "PostgresContextSteep.SETUP",
+        FLOW_CHECK_PRE= "PostgresContextSteep.FLOW_CHECK_PRE",
+        FLOW_CHECK_VERBOSE = "PostgresContextSteep.FLOW_CHECK_VERBOSE",
+        CTL_INIT = "PostgresContextSteep.CTL_INIT",
+        SRV_DROP = "PostgresContextSteep.SRV_DROP",
+        SRV_CREATE = "PostgresContextSteep.SRV_CREATE",
+        CONF_FILE = "PostgresContextSteep.CONF_FILE",
+        SRV_RESTART = "PostgresContextSteep.SRV_RESTART",
+        DB_USER_CREATE = "PostgresContextSteep.DB_USER_CREATE",
+        DB_DATABASE_CREATE = "PostgresContextSteep.DB_DATABASE_CREATE",
+        DB_DATABASE_EXTENSIONS = "PostgresContextSteep.DB_DATABASE_EXTENSIONS",
+        DB_DATABASE_IMPORT = "PostgresContextSteep.DB_DATABASE_IMPORT",
+        DB_USER_CONFIGS = "PostgresContextSteep.DB_USER_CONFIGS",
+        DB_DATABASE_CONFIG = "PostgresContextSteep.DB_DATABASE_CONFIG",
+        DB_DATABASE_SETUP = "PostgresContextSteep.DB_DATABASE_SETUP",
+        SRV_START = "PostgresContextSteep.SRV_START",
+        FLOW_END = "PostgresContextSteep.FLOW_END",
     }
 
     export type DatabaseSetup = {
@@ -75,12 +100,29 @@ namespace postgrade {
 
     export type PostgradeResponse = {
         result?:boolean
-        data?:any
+        returns?:SetupReturns
         settings?:Configs
         statusText?:string
         status?:number,
         message?:string
     }
+
+    export type Notified = { event?:"log"|"message"|"setup"|"flowResolved", text?:string, args?:any };
+
+    export type PostgresInstanceSetup = {
+        status?:boolean,
+        actions:( PostgresContextSteep )[]
+    }
+
+    export type SetupReturns = {
+        result:boolean,
+        message?:string
+        messageError?:string
+        hint?:any
+        setups?:PostgresInstanceSetup
+        notified?:Notified[]
+    }
+
 
     export function setup( opts:Configs, resolve:( error?:PostgradeError, response?:PostgradeResponse)=>void ){
         let origin = `http://${ opts?.setup?.host||"admin" }:${ opts?.setup?.port || 80 }`;
@@ -115,16 +157,17 @@ namespace postgrade {
             error.status = response.status;
             error.statusText = response.statusText;
             error.data = response.data;
+            let returns = response.data as SetupReturns;
 
             return resolve( null, {
                 result: response.status === 200
                     && !!response.data?.result
                 ,
                 settings: override,
-                data: response.data,
+                returns: returns,
                 status: response.status,
                 statusText: response.statusText,
-                message: response.data?.message
+                message: returns?.message
             });
 
         }).catch( reason => {
