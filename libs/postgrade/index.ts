@@ -92,7 +92,7 @@ namespace postgrade {
     }
 
     export type PostgradeError = Error & {
-        data?:any
+        returns?:SetupReturns
         settings?:Configs
         statusText?:string
         status?:number
@@ -152,13 +152,9 @@ namespace postgrade {
         fs.writeFileSync( Path.join( destination, "setup.json" ), JSON.stringify( override, null, 2 ) );
 
         axios.post( `${ origin }/api/admin/setup/${ opts?.setup?.app }`, opts ).then( response => {
-            let error = new Error( "Falha ao configurar a base de dados!" ) as PostgradeError;
-            error.settings = override;
-            error.status = response.status;
-            error.statusText = response.statusText;
-            error.data = response.data;
             let returns = response.data as SetupReturns;
-
+            if( !returns ) returns = { result: false };
+            if( !returns.notified ) returns.notified = [];
             return resolve( null, {
                 result: response.status === 200
                     && !!response.data?.result

@@ -1,6 +1,6 @@
 {
   "name": "postgrade",
-  "version": "1.0.21-1",
+  "version": "1.0.22",
   "main": "libs/postgrade/index.js",
   "scripts": {
     "lin:tsc -w": "tsc -w",
